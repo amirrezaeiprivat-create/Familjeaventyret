@@ -93,6 +93,7 @@
       data.plan = { id: planId, family_id: familyId, week_start: getMonday(), status: 'open' };
     }
     data.chores = allChores.filter((chore) => (chore.chore_assignments || []).some((a) => a.user_id === data.member.user_id) && (chore.kind === 'curse' || (data.plan && chore.plan_id === data.plan.id)));
+    data.actionableCount = data.chores.filter((chore) => chore.kind === 'weekly' && data.plan && chore.plan_id === data.plan.id && !submissions.some((submission) => submission.chore_id === chore.id && submission.user_id === data.member.user_id && (submission.status === 'approved' || submission.status === 'pending_approval'))).length;
     data.weeklyChores = allChores.filter((chore) => chore.kind === 'weekly' && chore.is_active && data.plan && chore.plan_id === data.plan.id);
     data.memberProgress = members.map((member) => {
       const assigned = data.weeklyChores.flatMap((chore) => (chore.chore_assignments || []).filter((assignment) => assignment.user_id === member.user_id).map(() => chore));
@@ -114,7 +115,7 @@
     const mapped = submissions.map((s) => ({ id: s.id, questId: s.chore_id, questTitle: s.chores?.title || 'Uppdrag', submittedBy: members.find((m) => m.user_id === s.user_id)?.display_name || 'Familjemedlem', userId: s.user_id, kind: s.chores?.kind || 'weekly', submittedAt: new Date(s.submitted_at).getTime(), status: s.status, xp: s.xp_reward, tokens: s.token_reward, reason: s.rejection_reason }));
     state.questSubmissions = mapped;
     state.completed = submissions.filter((s) => s.status === 'approved' && s.chores?.kind === 'weekly' && s.user_id === data.member.user_id).map((s) => s.chore_id);
-    state.customQuests = data.chores.filter((c) => c.kind === 'weekly').map((c) => ({ id: c.id, title: c.title, detail: c.description, icon: 'dish', color: 'green', xp: c.xp_reward, tokens: c.token_reward, difficulty: 'Veckosyssla' }));
+    state.customQuests = data.chores.filter((c) => c.kind === 'weekly').map((c) => ({ id: c.id, title: c.title, detail: c.description, icon: 'dish', color: 'green', xp: c.xp_reward, tokens: c.token_reward, difficulty: c.difficulty || 'Lätt' }));
     state.curses = allChores.filter((c) => c.kind === 'curse').map((c) => {
       const last = c.quest_submissions?.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))[0];
       const mine = (c.chore_assignments || []).some((a) => a.user_id === data.member.user_id);
@@ -145,6 +146,11 @@
     picker.className = 'assignee-picker';
     picker.dataset.assigneePicker = 'true';
     picker.innerHTML = `<legend>Tilldela till</legend>${data.members.map((m) => `<label><input type="checkbox" name="assignees" value="${escHtml(m.user_id)}" checked> ${escHtml(m.display_name)}</label>`).join('')}`;
+    if (!form.querySelector('[name="difficulty"]')) {
+      const field = document.createElement('label');
+      field.innerHTML = 'Svårighetsgrad<select name="difficulty"><option value="Lätt">Lätt</option><option value="Mellan">Mellan</option><option value="Svår">Svår</option></select>';
+      form.insertBefore(field, form.querySelector('[data-assignee-picker]') || form.querySelector('button[type="submit"]'));
+    }
     form.insertBefore(picker, form.querySelector('button[type="submit"]'));
   }
   function decorateLiveUi() {
@@ -210,6 +216,30 @@
     const heroStats = document.querySelector('.hero-stats');
     const memberStat = heroStats?.querySelectorAll('.hero-stat')[2];
     if (memberStat && memberStat.textContent !== `${data.members.length} medlemmar`) memberStat.innerHTML = `<b>${data.members.length}</b> medlemmar`;
+    const seasonStat = heroStats?.querySelectorAll('.hero-stat')[1];
+    const weekPercent = data.weekProgress?.assigned ? Math.round(data.weekProgress.completed / data.weekProgress.assigned * 100) : 0;
+    if (seasonStat && seasonStat.textContent !== `${weekPercent}% av veckans sysslor`) seasonStat.innerHTML = `<b>${weekPercent}%</b> av veckans sysslor`;
+    const badge = document.querySelector('.nav-count');
+    if (badge) { badge.textContent = data.actionableCount ? String(data.actionableCount) : ''; badge.hidden = !data.actionableCount; }
+    const weeklyChallenge = document.querySelector('#view-root .all-quests + .family-card');
+    if (weeklyChallenge) {
+      const completed = data.weekProgress?.completed || 0;
+      const assigned = data.weekProgress?.assigned || 0;
+      const percent = assigned ? Math.round(completed / assigned * 100) : 0;
+      const pending = data.memberProgress.reduce((sum, member) => sum + member.pending, 0);
+      const daysLeft = Math.max(0, 6 - ((new Date().getDay() + 6) % 7));
+      const chip = weeklyChallenge.querySelector('.level-chip');
+      if (chip && chip.textContent !== `${daysLeft} dagar kvar`) chip.textContent = `${daysLeft} dagar kvar`;
+      const description = weeklyChallenge.querySelector('p');
+      const descriptionText = assigned ? `${assigned} sysslor är tilldelade den här veckan. Alla behöver godkännas för att familjen ska få diamantkistorna.${pending ? ` ${pending} väntar på godkännande.` : ''}` : 'Veckans sysslor visas här när en administratör har skapat och tilldelat dem.';
+      if (description && description.textContent !== descriptionText) description.textContent = descriptionText;
+      const bar = weeklyChallenge.querySelector('.progress span');
+      if (bar) bar.style.width = `${percent}%`;
+      const label = weeklyChallenge.querySelector('.xp-label span');
+      if (label && label.textContent !== `${completed} av ${assigned} sysslor godkända`) label.textContent = `${completed} av ${assigned} sysslor godkända`;
+      const value = weeklyChallenge.querySelector('.xp-label b');
+      if (value && value.textContent !== `${percent}%`) value.textContent = `${percent}%`;
+    }
     const permissionCard = document.querySelector('.admin-profile-link');
     if (permissionCard) {
       permissionCard.hidden = data.member.role !== 'admin';
@@ -351,7 +381,7 @@
     const form = new FormData(event.target);
     const assignees = [...event.target.querySelectorAll('[name="assignees"]:checked')].map((el) => el.value);
     try {
-      await call(client.rpc('add_weekly_chore', { p_plan_id: data.plan.id, p_title: String(form.get('title')).trim(), p_description: String(form.get('detail') || ''), p_xp: Number(form.get('xp')), p_tokens: Number(form.get('tokens')), p_assignees: assignees }));
+      await call(client.rpc('add_weekly_chore', { p_plan_id: data.plan.id, p_title: String(form.get('title')).trim(), p_description: String(form.get('detail') || ''), p_xp: Number(form.get('xp')), p_tokens: Number(form.get('tokens')), p_assignees: assignees, p_difficulty: String(form.get('difficulty') || 'Lätt') }));
       await refresh();
       window.showToast?.('Veckosysslan har lagts till.');
     } catch (error) { window.showToast?.(error.message); }

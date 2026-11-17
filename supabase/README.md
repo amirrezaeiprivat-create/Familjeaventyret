@@ -6,7 +6,7 @@ Supabase Free-projektet `Familjeäventyret` ligger i North EU (Stockholm). Proje
 
 `schema.sql` skapar tabeller, RLS, familjeinbjudningar, veckosysslor, tilldelningar, godkännandeflöde, serverstyrda XP/mynt och diamantkistor.
 
-Om `schema.sql` redan har körts ska även `migrations/20261117_family_limits_and_streak.sql` köras i Supabases SQL Editor. Den begränsar familjen till två aktiva administratörer, ger korrekt streak-framsteg vid godkännande och kontrollerar att varje veckosyssla är tilldelad innan veckan kan stängas.
+Om `schema.sql` redan har körts ska migrationsfilerna i `migrations/` köras i datumordning i Supabases SQL Editor. `20261117_family_limits_and_streak.sql` begränsar familjen till två aktiva administratörer, ger streak-framsteg vid godkännande och kontrollerar att varje veckosyssla är tilldelad innan veckan kan stängas. `20261118_chore_difficulty.sql` lägger till svårighetsgraderna Lätt, Mellan och Svår och uppdaterar RPC-funktionen som skapar veckosysslor.
 
 ## Nuvarande appkoppling
 
