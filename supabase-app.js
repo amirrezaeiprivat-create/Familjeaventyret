@@ -84,6 +84,7 @@
     ]);
     data.familyName = family.name;
     data.members = members;
+    data.member = members.find((member) => member.user_id === data.member.user_id) || data.member;
     data.plan = plans[0] || null;
     const allChores = chores;
     data.submissions = submissions;
@@ -92,6 +93,17 @@
       data.plan = { id: planId, family_id: familyId, week_start: getMonday(), status: 'open' };
     }
     data.chores = allChores.filter((chore) => (chore.chore_assignments || []).some((a) => a.user_id === data.member.user_id) && (chore.kind === 'curse' || (data.plan && chore.plan_id === data.plan.id)));
+    data.weeklyChores = allChores.filter((chore) => chore.kind === 'weekly' && chore.is_active && data.plan && chore.plan_id === data.plan.id);
+    data.memberProgress = members.map((member) => {
+      const assigned = data.weeklyChores.flatMap((chore) => (chore.chore_assignments || []).filter((assignment) => assignment.user_id === member.user_id).map(() => chore));
+      const completed = assigned.filter((chore) => (chore.quest_submissions || []).some((submission) => submission.user_id === member.user_id && submission.status === 'approved')).length;
+      const pending = assigned.filter((chore) => (chore.quest_submissions || []).some((submission) => submission.user_id === member.user_id && submission.status === 'pending_approval')).length;
+      return { ...member, assigned: assigned.length, completed, pending };
+    });
+    data.weekProgress = {
+      assigned: data.memberProgress.reduce((sum, member) => sum + member.assigned, 0),
+      completed: data.memberProgress.reduce((sum, member) => sum + member.completed, 0)
+    };
     const state = window.gameState;
     if (!state) return;
     state.role = data.member.role;
@@ -148,6 +160,56 @@
     const profileDescription = document.querySelector('.profile-card>p');
     const profileText = `Äventyrare · ${data.member.role === 'admin' ? 'Administratör' : 'Medlem'} i ${familyName}`;
     if (profileDescription && profileDescription.textContent !== profileText) profileDescription.textContent = profileText;
+    const playerCard = document.querySelector('.right-col .player-card');
+    if (playerCard) {
+      const playerName = playerCard.querySelector('.player-meta b');
+      if (playerName && playerName.textContent !== name) playerName.textContent = name;
+      const level = Math.floor(Math.max(0, data.member.xp) / 1000) + 1;
+      const levelChip = playerCard.querySelector('.level-chip');
+      if (levelChip && levelChip.textContent !== `NIVÅ ${level}`) levelChip.textContent = `NIVÅ ${level}`;
+      const rank = [...data.members].sort((a, b) => b.xp - a.xp).findIndex((member) => member.user_id === data.member.user_id) + 1;
+      const rankText = playerCard.querySelector('.player-foot b');
+      if (rankText && rankText.textContent !== `#${rank} av ${data.members.length}`) rankText.textContent = `#${rank} av ${data.members.length}`;
+      const rankLabel = playerCard.querySelector('.player-foot span');
+      if (rankLabel && rankLabel.textContent !== `👥 Familjerank · ${name}`) rankLabel.textContent = `👥 Familjerank · ${name}`;
+      const progressLabel = playerCard.querySelector('.xp-label b');
+      if (progressLabel && progressLabel.textContent !== `${data.member.xp} / ${(level * 1000)} XP`) progressLabel.textContent = `${data.member.xp} / ${(level * 1000)} XP`;
+      const xpBar = playerCard.querySelector('.progress span');
+      if (xpBar) xpBar.style.width = `${Math.min(100, Math.round((data.member.xp % 1000) / 10))}%`;
+    }
+    const familyToday = document.querySelector('.right-col .family-card');
+    if (familyToday) {
+      const completed = data.weekProgress?.completed || 0;
+      const assigned = data.weekProgress?.assigned || 0;
+      const pending = data.memberProgress.reduce((sum, member) => sum + member.pending, 0);
+      const familyMarkup = `<div class="section-head"><h2>Familjen den här veckan</h2><span style="font-size:9px;color:#8c958d">${completed} av ${assigned} godkända${pending ? ` · ${pending} väntar` : ''}</span></div>${data.memberProgress.map((member, index) => {
+        const colors = ['#f4e7d8','#f8e5ea','#e7edfa','#e8f2e2'];
+        const avatars = ['🧑','👩','🧒','🧑‍🦱'];
+        const percent = member.assigned ? Math.round(member.completed / member.assigned * 100) : 0;
+        return `<div class="member-line"><div class="member-avatar" style="background:${colors[index % colors.length]}">${avatars[index % avatars.length]}</div><b>${escHtml(member.display_name)}</b><div class="tiny-progress"><span style="width:${percent}%;background:${colors[index % colors.length]}"></span></div><small>${member.completed}/${member.assigned}${member.pending ? ` · ${member.pending} väntar` : ''}</small></div>`;
+      }).join('') || '<p class="admin-muted">Inga familjemedlemmar har lagts till ännu.</p>'}`;
+      if (familyToday.dataset.remoteMarkup !== familyMarkup) { familyToday.dataset.remoteMarkup = familyMarkup; familyToday.innerHTML = familyMarkup; }
+    }
+    const homeProgress = document.querySelector('.left-col .family-card');
+    if (homeProgress) {
+      const completed = data.weekProgress?.completed || 0;
+      const assigned = data.weekProgress?.assigned || 0;
+      const percent = assigned ? Math.round(completed / assigned * 100) : 0;
+      const summary = homeProgress.querySelector('.section-head span:first-child');
+      const summaryMarkup = assigned ? `Familjen har gjort <b>${completed} av ${assigned} sysslor</b> den här veckan` : 'Inga sysslor har tilldelats den här veckan ännu.';
+      if (summary && summary.innerHTML !== summaryMarkup) summary.innerHTML = summaryMarkup;
+      const badge = homeProgress.querySelector('.section-head span:last-child');
+      if (badge && badge.textContent !== `${percent}%`) badge.textContent = `${percent}%`;
+      const bar = homeProgress.querySelector('.progress span');
+      if (bar) bar.style.width = `${percent}%`;
+      const footer = homeProgress.querySelector('div[style*="display:flex"] span');
+      const pending = data.memberProgress.reduce((sum, member) => sum + member.pending, 0);
+      const footerText = assigned && completed === assigned ? 'Alla veckosysslor är godkända — diamantkistor väntar!' : pending ? `${pending} sysslor väntar på godkännande.` : 'Godkända sysslor räknas in i familjens veckomål.';
+      if (footer && footer.textContent !== footerText) footer.textContent = footerText;
+    }
+    const heroStats = document.querySelector('.hero-stats');
+    const memberStat = heroStats?.querySelectorAll('.hero-stat')[2];
+    if (memberStat && memberStat.textContent !== `${data.members.length} medlemmar`) memberStat.innerHTML = `<b>${data.members.length}</b> medlemmar`;
     const permissionCard = document.querySelector('.admin-profile-link');
     if (permissionCard) {
       permissionCard.hidden = data.member.role !== 'admin';
