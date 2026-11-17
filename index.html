@@ -12,7 +12,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="#hem" aria-label="Familjeäventyret startsida"><span class="brand-mark">✦</span><span>familje<span class="brand-light">äventyret</span></span></a>
-      <div class="family-switch"><div class="family-crest">⌂</div><div><b>Familjen Lind</b><small>Vår äventyrsvärld</small></div><span class="chevron">⌄</span></div>
+      <div class="family-switch"><div class="family-crest">⌂</div><div><b>Familjen Rezaei</b><small>Vår äventyrsvärld</small></div><span class="chevron">⌄</span></div>
       <div class="nav-label">ÄVENTYR</div>
       <nav class="main-nav" aria-label="Huvudmeny">
         <button class="nav-item active" data-view="hem"><span>⌂</span>Översikt</button>
@@ -23,20 +23,24 @@
       <div class="nav-label admin-nav-label">ADMINISTRATION</div>
       <button class="nav-item admin-nav-item" data-view="admin"><span>⚙</span>Adminpanel <i class="admin-role-chip">ADMIN</i></button>
       <div class="sidebar-season"><div class="season-mini-icon" id="season-mini-icon">🍂</div><div class="season-mini-copy"><small>NU PÅGÅR</small><b id="season-mini-title">Höstsagan</b><span id="season-days-left">14 dagar kvar</span></div><div class="season-mini-arrow">↗</div></div>
-      <div class="sidebar-bottom"><div class="nav-label">FAMILJ</div><button class="nav-item" data-view="profil"><span>◎</span>Min profil</button><div class="sidebar-player"><div class="avatar avatar-small">🧑🏻‍🚀</div><div><b>Alex</b><small>Admin · äventyrsnivå 8</small></div><button class="dots" aria-label="Fler alternativ">···</button></div></div>
+      <div class="sidebar-bottom"><div class="nav-label">FAMILJ</div><button type="button" class="sidebar-player" data-view="profil" aria-label="Öppna min profil"><div class="avatar avatar-small">🧑🏻‍🚀</div><div><b>Alex</b><small>Admin · äventyrsnivå 8</small></div></button></div>
     </aside>
     <main class="main-area">
-      <header class="topbar"><div class="mobile-brand"><span class="brand-mark">✦</span> familjeäventyret</div><div class="breadcrumbs">Familjen Lind <span>/</span> <b id="crumb-label">Översikt</b></div><div class="top-actions"><div class="streak-pill"><span>♨</span><b id="streak-value">5</b><small>dagars svit</small></div><button class="icon-button notification-button" aria-label="Aviseringar">♧<i></i></button><div class="avatar top-avatar">🧑🏻‍🚀</div></div></header>
+      <header class="topbar"><div class="mobile-brand"><span class="brand-mark">✦</span> familjeäventyret</div><div class="breadcrumbs">Familjen Rezaei <span>/</span> <b id="crumb-label">Översikt</b></div><div class="top-actions"><div class="streak-pill"><span>♨</span><b id="streak-value">5</b><small>dagars svit</small></div><button class="icon-button notification-button" aria-label="Aviseringar">♧<i></i></button><button type="button" class="avatar top-avatar" data-view="profil" aria-label="Öppna min profil">🧑🏻‍🚀</button></div></header>
       <div id="view-root"></div>
-      <nav class="mobile-nav" aria-label="Mobilmeny"><button class="mobile-nav-item active" data-view="hem"><span>⌂</span><small>Hem</small></button><button class="mobile-nav-item" data-view="uppdrag"><span>◈</span><small>Uppdrag</small></button><button class="mobile-nav-item" data-view="varelser"><span>✧</span><small>Varelser</small></button><button class="mobile-nav-item" data-view="ranking"><span>♜</span><small>Ranking</small></button><button class="mobile-nav-item" data-view="profil"><span>◎</span><small>Profil</small></button><button class="mobile-nav-item admin-mobile-item" data-view="admin"><span>⚙</span><small>Admin</small></button></nav>
+      <nav class="mobile-nav" aria-label="Mobilmeny"><button class="mobile-nav-item active" data-view="hem"><span>⌂</span><small>Hem</small></button><button class="mobile-nav-item" data-view="uppdrag"><span>◈</span><small>Uppdrag</small></button><button class="mobile-nav-item" data-view="varelser"><span>✧</span><small>Varelser</small></button><button class="mobile-nav-item" data-view="ranking"><span>♜</span><small>Ranking</small></button><button class="mobile-nav-item admin-mobile-item" data-view="admin"><span>⚙</span><small>Admin</small></button></nav>
     </main>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="modal-root"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0"></script>
+  <script src="supabase-config.js"></script>
+  <script src="supabase-client.js"></script>
   <script src="season.js"></script>
   <script src="creatures.js"></script>
   <script src="art.js"></script>
   <script src="curse-ui.js"></script>
   <script src="app.js"></script>
+  <script src="supabase-app.js"></script>
 </body>
 </html>
