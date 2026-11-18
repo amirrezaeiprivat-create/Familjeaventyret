@@ -106,6 +106,8 @@
     finally { bootstrapping = false; }
   }
   async function loadFamilyData() {
+    const state = window.gameState;
+    if (!state) throw new Error('Spelstatusen kunde inte läsas in. Ladda om sidan.');
     const familyId = data.familyId;
     const [family, members, plans, chores, submissions, creatures, creatureEffects] = await Promise.all([
       call(client.from('families').select('name').eq('id', familyId).single()),
@@ -142,8 +144,6 @@
       assigned: data.memberProgress.reduce((sum, member) => sum + member.assigned, 0),
       completed: data.memberProgress.reduce((sum, member) => sum + member.completed, 0)
     };
-    const state = window.gameState;
-    if (!state) return;
     state.role = data.member.role;
     state.xp = data.member.xp;
     state.tokens = data.member.tokens;
