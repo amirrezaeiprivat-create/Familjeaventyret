@@ -105,6 +105,15 @@
     try { return await bootFamily(); }
     finally { bootstrapping = false; }
   }
+  async function syncFamilyRole() {
+    if (!data.familyId || !data.member) return;
+    try {
+      const membership = await call(client.from('family_members').select('role,is_active').eq('family_id', data.familyId).eq('user_id', data.member.user_id).maybeSingle());
+      if (!membership?.is_active || membership.role !== data.member.role) await bootstrapFamily();
+    } catch (error) { errorMessage(error); }
+  }
+  window.addEventListener('focus', syncFamilyRole);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) syncFamilyRole(); });
   async function loadFamilyData() {
     const state = window.gameState;
     if (!state) throw new Error('Spelstatusen kunde inte läsas in. Ladda om sidan.');
@@ -164,13 +173,16 @@
   function decorateAdminForm() {
     const form = document.getElementById('admin-create-quest');
     if (!form) return;
-    if (!document.getElementById('family-member-management')) {
-      const adminCount = data.members.filter((member) => member.role === 'admin').length;
-      const memberCard = document.createElement('section');
+    const existingMemberCard = document.getElementById('family-member-management');
+    const memberCard = existingMemberCard || document.createElement('section');
+    const adminCount = data.members.filter((member) => member.role === 'admin').length;
+    const memberSignature = data.members.map((member) => `${member.user_id}:${member.display_name}:${member.role}`).join('|');
+    if (!existingMemberCard || memberCard.dataset.signature !== memberSignature) {
       memberCard.id = 'family-member-management';
       memberCard.className = 'card admin-section family-member-management';
       memberCard.innerHTML = `<div class="section-head"><div><h2>Hantera familjemedlemmar</h2><p class="admin-muted">Ändra roller eller ta bort medlemmar från familjen.</p></div><span class="level-chip">${data.members.length} MEDLEMMAR</span></div><div class="family-member-list">${data.members.map((member) => `<div class="family-member-admin-row" data-family-user="${escHtml(member.user_id)}"><div class="family-member-admin-name"><b>${escHtml(member.display_name)}</b>${member.user_id === data.member.user_id ? '<small>Du</small>' : ''}</div><select data-member-role aria-label="Roll för ${escHtml(member.display_name)}"><option value="player" ${member.role === 'player' ? 'selected' : ''} ${member.role === 'admin' && adminCount <= 1 ? 'disabled' : ''}>Spelare</option><option value="admin" ${member.role === 'admin' ? 'selected' : ''} ${member.role === 'player' && adminCount >= 2 ? 'disabled' : ''}>Administratör</option></select><button class="filter-tab" type="button" data-save-member-role>Spara roll</button><button class="filter-tab admin-remove" type="button" data-remove-family-member ${(member.user_id === data.member.user_id || (member.role === 'admin' && adminCount <= 1)) ? 'disabled' : ''}>Ta bort</button></div>`).join('')}</div>`;
-      form.closest('.admin-section')?.before(memberCard);
+      memberCard.dataset.signature = memberSignature;
+      if (!existingMemberCard) form.closest('.admin-section')?.before(memberCard);
     }
     if (!document.getElementById('invite-family-card')) {
       const invite = document.createElement('section');
@@ -394,7 +406,16 @@
         await call(client.rpc('admin_set_member_role', { p_family_id: data.familyId, p_user_id: row.dataset.familyUser, p_role: row.querySelector('[data-member-role]').value }));
         await refresh();
         window.showToast?.('Familjemedlemmens roll uppdaterades.');
-      } catch (error) { window.showToast?.(error.message); }
+      } catch (error) {
+        const message = /admin_set_member_role|schema cache|could not find the function/i.test(error.message || '')
+          ? 'Rollhanteringen saknas i databasen. Kör migrationen 20261118_family_management.sql i Supabase.'
+          : /at most two active administrators/i.test(error.message || '')
+            ? 'Familjen har redan två administratörer.'
+            : /only a family admin/i.test(error.message || '')
+              ? 'Bara en familjeadmin kan ändra roller.'
+              : error.message;
+        window.showToast?.(message);
+      }
     }
     const removeMember = event.target.closest('[data-remove-family-member]');
     if (removeMember && data.familyId && data.member.role === 'admin') {
