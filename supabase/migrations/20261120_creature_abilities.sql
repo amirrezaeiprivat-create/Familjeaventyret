@@ -38,8 +38,10 @@ create table if not exists public.family_challenges (
   id uuid primary key default gen_random_uuid(), family_id uuid not null references public.families(id) on delete cascade,
   title text not null, goal integer not null default 10, progress integer not null default 0,
   status text not null default 'active' check(status in ('active','complete','expired')),
-  starts_at timestamptz not null default now(), ends_at timestamptz not null default now()+interval '7 days', created_by uuid not null references auth.users(id)
+  starts_at timestamptz not null default now(), ends_at timestamptz not null default now()+interval '7 days', created_by uuid not null references auth.users(id),
+  created_at timestamptz not null default now()
 );
+alter table public.family_challenges add column if not exists created_at timestamptz not null default now();
 create table if not exists public.creature_chest_credits (
   id uuid primary key default gen_random_uuid(), family_id uuid not null references public.families(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade, chest_type text not null check(chest_type in ('wooden','silver','gold','diamond')),

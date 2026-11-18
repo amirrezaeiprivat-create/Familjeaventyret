@@ -138,7 +138,7 @@
       optionalRows(client.from('creature_effects').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).gt('uses_remaining', 0).order('created_at')),
       optionalRows(client.from('creature_ability_requests').select('*').eq('family_id', familyId).order('created_at', { ascending: false })),
       optionalRows(client.from('creature_chest_credits').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).is('redeemed_at', null).order('created_at')),
-      optionalRows(client.from('family_challenges').select('*').eq('family_id', familyId).in('status', ['active','complete']).order('created_at', { ascending: false }))
+      optionalRows(client.from('family_challenges').select('*').eq('family_id', familyId).in('status', ['active','complete']).order('starts_at', { ascending: false }))
     ]);
     data.familyName = family.name;
     data.members = members;
