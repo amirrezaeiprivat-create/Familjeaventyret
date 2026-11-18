@@ -304,6 +304,17 @@
       weekly.innerHTML = `<div class="section-head"><div><h2>Veckans sysslor</h2><p class="admin-muted">Tilldela varje uppgift till familjemedlemmar. När alla är godkända kan ni hämta veckans diamantkistor.</p></div><span class="level-chip">${data.plan?.status === 'closed' ? 'STÄNGD' : 'ÖPPEN'}</span></div><button class="primary-button" type="button" data-close-week ${data.plan?.status === 'closed' ? 'disabled' : ''}>Stäng veckan och dela ut diamantkistor</button>`;
       form.closest('.admin-section')?.before(weekly);
     }
+    let choreManager = document.getElementById('admin-weekly-chores');
+    if (!choreManager) { choreManager = document.createElement('section'); choreManager.id = 'admin-weekly-chores'; choreManager.className = 'card admin-section admin-weekly-chores'; }
+    const memberNames = new Map(data.members.map((member) => [member.user_id, member.display_name]));
+    const weeklyChoreMarkup = data.weeklyChores.map((chore) => {
+      const assignees = (chore.chore_assignments || []).map((assignment) => memberNames.get(assignment.user_id)).filter(Boolean);
+      const completed = (chore.quest_submissions || []).some((submission) => submission.status === 'approved');
+      return `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(chore.title)}</b><small>${escHtml(assignees.join(', ') || 'Ingen tilldelad')} · ${escHtml(chore.difficulty || 'Lätt')} · ${chore.xp_reward} XP · ${chore.token_reward} mynt</small></div><button class="filter-tab admin-remove" type="button" data-delete-weekly-chore="${escHtml(chore.id)}" ${completed ? 'disabled title="En redan godkänd uppgift kan inte tas bort."' : ''}>Ta bort</button></div>`;
+    }).join('');
+    const managerMarkup = `<div class="section-head"><div><h2>Hantera utdelade sysslor</h2><p class="admin-muted">Ta bort en syssla från veckans uppgifter. Godkända sysslor behålls i historiken.</p></div><span class="level-chip">${data.weeklyChores.length} SYSSLOR</span></div>${weeklyChoreMarkup || '<p class="admin-muted">Inga aktiva veckosysslor att hantera.</p>'}`;
+    if (choreManager.innerHTML !== managerMarkup) choreManager.innerHTML = managerMarkup;
+    if (!choreManager.isConnected) document.getElementById('weekly-plan-card')?.after(choreManager);
     if (form.querySelector('[data-assignee-picker]')) return;
     const picker = document.createElement('fieldset');
     picker.className = 'assignee-picker';
@@ -532,6 +543,15 @@
     const demoExit = event.target.closest('[data-demo-exit]');
     if (demoExit && window.demoSandbox.active) { event.preventDefault(); event.stopImmediatePropagation(); await stopDemoMode(); return; }
     if (window.demoSandbox.active) return;
+    const deleteWeeklyChore = event.target.closest('[data-delete-weekly-chore]');
+    if (deleteWeeklyChore && data.familyId && data.member.role === 'admin') {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (!window.confirm('Ta bort sysslan från veckans uppgifter? Om den väntar på godkännande skickas den tillbaka som nekad.')) return;
+      deleteWeeklyChore.disabled = true;
+      try { await call(client.rpc('admin_delete_weekly_chore', { p_chore_id: deleteWeeklyChore.dataset.deleteWeeklyChore })); await refresh(); window.showToast?.('Sysslan har tagits bort från veckans uppgifter.'); }
+      catch (error) { deleteWeeklyChore.disabled = false; window.showToast?.(error.message); }
+      return;
+    }
     const abilityButton = event.target.closest('[data-ability]');
     if (abilityButton && data.familyId) {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -680,6 +700,17 @@
   }, true);
   document.addEventListener('submit', async (event) => {
     if (window.demoSandbox.active) return;
+    if (event.target.id === 'admin-self-token-form' && data.familyId) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (data.member.role !== 'admin') return;
+      const amount = Math.floor(Number(new FormData(event.target).get('amount')));
+      if (!Number.isInteger(amount) || amount < 1 || amount > 1000) { window.showToast?.('Ange mellan 1 och 1 000 mynt.'); return; }
+      const button = event.submitter; if (button) button.disabled = true;
+      try { await call(client.rpc('admin_grant_self_tokens', { p_family_id: data.familyId, p_amount: amount })); await refresh(); window.showToast?.(`${amount} mynt lades till på ditt konto.`); }
+      catch (error) { window.showToast?.(error.message); }
+      finally { if (button) button.disabled = false; }
+      return;
+    }
     if (event.target.id !== 'admin-create-quest' || !data.familyId) return;
     event.preventDefault();
     event.stopImmediatePropagation();
