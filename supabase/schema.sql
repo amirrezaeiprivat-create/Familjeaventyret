@@ -113,6 +113,38 @@ create table if not exists public.notifications (
   read_at timestamptz
 );
 
+-- Persistent creature collection and server-owned effects for each family member.
+create table if not exists public.creature_inventory (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  creature_id text not null,
+  creature_name text not null,
+  rarity text not null check (rarity in ('Common','Uncommon','Rare','Epic','Legendary','Curse')),
+  level integer not null default 1 check (level between 1 and 5),
+  creature_xp integer not null default 0 check (creature_xp >= 0),
+  is_cursed boolean not null default false,
+  cooldown_until timestamptz,
+  acquired_at timestamptz not null default now()
+);
+
+create index if not exists creature_inventory_owner_idx on public.creature_inventory(family_id,user_id);
+
+create table if not exists public.creature_effects (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  creature_id uuid references public.creature_inventory(id) on delete cascade,
+  effect_key text not null,
+  payload jsonb not null default '{}'::jsonb,
+  uses_remaining integer not null default 1 check (uses_remaining >= 0),
+  starts_at timestamptz not null default now(),
+  expires_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists creature_effects_active_idx on public.creature_effects(family_id,user_id,effect_key,expires_at);
+
 create or replace function public.app_is_family_member(p_family_id uuid)
 returns boolean language sql stable security definer set search_path = public, pg_temp
 as $$ select exists (select 1 from public.family_members m where m.family_id=p_family_id and m.user_id=auth.uid() and m.is_active) $$;
@@ -330,6 +362,8 @@ alter table public.chore_assignments enable row level security;
 alter table public.quest_submissions enable row level security;
 alter table public.weekly_rewards enable row level security;
 alter table public.notifications enable row level security;
+alter table public.creature_inventory enable row level security;
+alter table public.creature_effects enable row level security;
 
 drop policy if exists families_read_members on public.families;
 create policy families_read_members on public.families for select to authenticated using (public.app_is_family_member(id));
@@ -349,9 +383,13 @@ drop policy if exists weekly_rewards_read_family on public.weekly_rewards;
 create policy weekly_rewards_read_family on public.weekly_rewards for select to authenticated using (public.app_is_family_member(family_id));
 drop policy if exists notifications_read_self on public.notifications;
 create policy notifications_read_self on public.notifications for select to authenticated using (user_id=auth.uid() and public.app_is_family_member(family_id));
+create policy creature_inventory_read_family on public.creature_inventory for select to authenticated using (user_id=auth.uid() and public.app_is_family_member(family_id));
+create policy creature_effects_read_self on public.creature_effects for select to authenticated using (user_id=auth.uid() and public.app_is_family_member(family_id));
 
 revoke all on public.families,public.family_members,public.family_invites,public.weekly_plans,public.chores,public.chore_assignments,public.quest_submissions,public.weekly_rewards,public.notifications from anon,authenticated;
 grant select on public.families,public.family_members,public.family_invites,public.weekly_plans,public.chores,public.chore_assignments,public.quest_submissions,public.weekly_rewards,public.notifications to authenticated;
+revoke all on public.creature_inventory,public.creature_effects from anon,authenticated;
+grant select on public.creature_inventory,public.creature_effects to authenticated;
 revoke all on function public.app_is_family_member(uuid),public.app_is_family_admin(uuid),public.create_family(text,text),public.create_family_invite(uuid,text),public.join_family(text,text),public.create_weekly_plan(uuid,date),public.add_weekly_chore(uuid,text,text,integer,integer,uuid[],text),public.submit_chore(uuid),public.decide_quest_submission(uuid,text,text),public.close_weekly_plan(uuid) from public,anon;
 grant execute on function public.app_is_family_member(uuid),public.app_is_family_admin(uuid),public.create_family(text,text),public.create_family_invite(uuid,text),public.join_family(text,text),public.create_weekly_plan(uuid,date),public.add_weekly_chore(uuid,text,text,integer,integer,uuid[],text),public.submit_chore(uuid),public.decide_quest_submission(uuid,text,text),public.close_weekly_plan(uuid) to authenticated;
 revoke all on function public.leave_family(uuid),public.admin_set_member_role(uuid,uuid,text),public.admin_remove_family_member(uuid,uuid),public.admin_delete_family(uuid) from public,anon;

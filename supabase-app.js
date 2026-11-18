@@ -7,7 +7,7 @@
     return;
   }
 
-  const data = { familyId: null, member: null, members: [], chores: [], submissions: [], plan: null };
+  const data = { familyId: null, member: null, members: [], chores: [], submissions: [], creatures: [], creatureEffects: [], plan: null };
   window.remoteFamily = data;
   const escHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const root = document.getElementById('modal-root');
@@ -16,6 +16,10 @@
     const { data: result, error } = await promise;
     if (error) throw error;
     return result;
+  };
+  const optionalRows = async (promise) => {
+    try { return await call(promise); }
+    catch (error) { if (['42P01','PGRST205'].includes(error.code)) return []; throw error; }
   };
 
   function showGate(content) {
@@ -65,6 +69,8 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'family_members', filter: `family_id=eq.${data.familyId}` }, () => bootstrapFamily().catch(errorMessage))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quest_submissions', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chores', filter: `family_id=eq.${data.familyId}` }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_inventory', filter: `family_id=eq.${data.familyId}` }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_effects', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .subscribe();
   }
   let bootstrapping = false;
@@ -76,17 +82,22 @@
   }
   async function loadFamilyData() {
     const familyId = data.familyId;
-    const [family, members, plans, chores, submissions] = await Promise.all([
+    const [family, members, plans, chores, submissions, creatures, creatureEffects] = await Promise.all([
       call(client.from('families').select('name').eq('id', familyId).single()),
       call(client.from('family_members').select('family_id,user_id,display_name,role,xp,tokens,shards,streak,is_active').eq('family_id', familyId).eq('is_active', true)),
       call(client.from('weekly_plans').select('*').eq('family_id', familyId).eq('week_start', getMonday()).limit(1)),
       call(client.from('chores').select('*,chore_assignments(user_id),quest_submissions(*)').eq('family_id', familyId).eq('is_active', true)),
-      call(client.from('quest_submissions').select('*,chores(title,kind,xp_reward,token_reward)').eq('family_id', familyId).order('submitted_at', { ascending: false }))
+      call(client.from('quest_submissions').select('*,chores(title,kind,xp_reward,token_reward)').eq('family_id', familyId).order('submitted_at', { ascending: false })),
+      optionalRows(client.from('creature_inventory').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).order('acquired_at')),
+      optionalRows(client.from('creature_effects').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).gt('uses_remaining', 0).order('created_at'))
     ]);
     data.familyName = family.name;
     data.members = members;
     data.member = members.find((member) => member.user_id === data.member.user_id) || data.member;
     data.plan = plans[0] || null;
+    data.creatures = creatures;
+    data.creatureEffects = creatureEffects;
+    state.creatures = creatures.map((creature) => { const definition = creatureDefinition(creature.creature_name); return { id: creature.id, catalogId: creature.creature_id, name: creature.creature_name, rarity: creature.rarity.toUpperCase(), rarityKey: creature.rarity, level: creature.level, creatureXp: creature.creature_xp, isCursed: creature.is_cursed, cooldownUntil: creature.cooldown_until ? new Date(creature.cooldown_until).getTime() : null, ready: !creature.cooldown_until || new Date(creature.cooldown_until).getTime() <= Date.now(), ability: definition?.ability || '', visualTheme: definition?.visualTheme || '' }; });
     const allChores = chores;
     data.submissions = submissions;
     if (data.member.role === 'admin' && !data.plan) {
