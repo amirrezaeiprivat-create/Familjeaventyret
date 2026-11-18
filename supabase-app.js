@@ -9,6 +9,7 @@
 
   const data = { familyId: null, member: null, members: [], chores: [], allChores: [], submissions: [], creatures: [], creatureEffects: [], abilityRequests: [], chestCredits: [], familyChallenges: [], plan: null };
   window.remoteFamily = data;
+  window.demoSandbox = { active: false, snapshot: null, workingState: null };
   const escHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const root = document.getElementById('modal-root');
   let realtimeChannel = null;
@@ -75,6 +76,7 @@
     return now.toLocaleDateString('sv-SE');
   }
   async function bootFamily() {
+    if (window.demoSandbox.active) return;
     const user = (await call(client.auth.getUser())).user;
     if (!user) return loginForm();
     const memberships = await call(client.from('family_members').select('family_id,user_id,display_name,role,xp,tokens,shards,streak,is_active').eq('user_id', user.id).eq('is_active', true));
@@ -116,6 +118,7 @@
     finally { bootstrapping = false; }
   }
   async function syncFamilyRole() {
+    if (window.demoSandbox.active) return;
     if (!data.familyId || !data.member) return;
     try {
       const membership = await call(client.from('family_members').select('role,is_active').eq('family_id', data.familyId).eq('user_id', data.member.user_id).maybeSingle());
@@ -269,6 +272,10 @@
   function decorateAdminForm() {
     const form = document.getElementById('admin-create-quest');
     if (!form) return;
+    if (data.member.role === 'admin') {
+      let sandboxCard = document.getElementById('admin-sandbox-entry');
+      if (!sandboxCard) { sandboxCard = document.createElement('section'); sandboxCard.id = 'admin-sandbox-entry'; sandboxCard.className = 'card admin-section sandbox-entry-card'; sandboxCard.innerHTML = '<div><span class="eyebrow">RISKFRI TESTYTA</span><h2>Testa utan risk</h2><p class="admin-muted">Öppna en separat kopia av familjeäventyret med obegränsat antal mynt. Inget du gör sparas på familjekontot.</p></div><button type="button" class="primary-button" data-demo-start>Starta demoläge</button>'; form.closest('.admin-section')?.before(sandboxCard); }
+    }
     renderAbilityRequests();
     const existingMemberCard = document.getElementById('family-member-management');
     const memberCard = existingMemberCard || document.createElement('section');
@@ -454,11 +461,36 @@
       if (ownSubmission && !note) { note = document.createElement('small'); note.className = 'own-submission-note'; note.textContent = 'Du kan inte besluta om din egen uppgift.'; row.appendChild(note); }
     });
   }
-  const viewObserver = new MutationObserver(() => { decorateLiveUi(); decorateAdminForm(); });
+  const viewObserver = new MutationObserver(() => { if (window.demoSandbox.active) return; decorateLiveUi(); decorateAdminForm(); });
   viewObserver.observe(document.getElementById('view-root'), { childList: true, subtree: true });
   async function refresh() {
+    if (window.demoSandbox.active) return;
     try { await loadFamilyData(); window.renderGame?.(); decorateAdminForm(); }
     catch (error) { errorMessage(error); }
+  }
+  function startDemoMode() {
+    if (data.member?.role !== 'admin') return;
+    window.demoSandbox.snapshot = window.gameState;
+    window.demoSandbox.active = true;
+    window.beginLocalDemo?.();
+    document.body.classList.add('demo-mode');
+    const banner = document.createElement('div');
+    banner.id = 'demo-mode-banner'; banner.className = 'demo-mode-banner';
+    banner.innerHTML = '<span><b>DEMOLÄGE</b><small>Isolerad kopia · obegränsat med mynt · ändringar sparas inte på familjekontot</small></span><button type="button" data-demo-exit>Avsluta demo</button>';
+    document.querySelector('#view-root')?.before(banner);
+    window.showToast?.('Demoläget är igång. Familjekontot påverkas inte.');
+  }
+  async function stopDemoMode() {
+    if (!window.demoSandbox.active) return;
+    const snapshot = window.demoSandbox.snapshot;
+    window.demoSandbox.active = false;
+    window.demoSandbox.snapshot = null;
+    window.demoSandbox.workingState = null;
+    document.body.classList.remove('demo-mode');
+    document.getElementById('demo-mode-banner')?.remove();
+    window.restoreLocalDemo?.(snapshot);
+    await refresh();
+    window.showToast?.('Demoläget avslutades. Familjens riktiga data är återställd.');
   }
   async function onAuthSubmit(event) {
     if (event.target.id !== 'auth-form') return;
@@ -493,6 +525,11 @@
   }
   document.addEventListener('submit', (event) => { onAuthSubmit(event); onFamilySubmit(event); }, true);
   document.addEventListener('click', async (event) => {
+    const demoStart = event.target.closest('[data-demo-start]');
+    if (demoStart) { event.preventDefault(); event.stopImmediatePropagation(); startDemoMode(); return; }
+    const demoExit = event.target.closest('[data-demo-exit]');
+    if (demoExit && window.demoSandbox.active) { event.preventDefault(); event.stopImmediatePropagation(); await stopDemoMode(); return; }
+    if (window.demoSandbox.active) return;
     const abilityButton = event.target.closest('[data-ability]');
     if (abilityButton && data.familyId) {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -595,6 +632,7 @@
     }
   }, true);
   document.addEventListener('click', async (event) => {
+    if (window.demoSandbox.active) return;
     const questButton = event.target.closest('[data-quest]');
     if (questButton && data.familyId) {
       event.stopImmediatePropagation();
@@ -639,6 +677,7 @@
     }
   }, true);
   document.addEventListener('submit', async (event) => {
+    if (window.demoSandbox.active) return;
     if (event.target.id !== 'admin-create-quest' || !data.familyId) return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -652,6 +691,7 @@
     } catch (error) { window.showToast?.(error.message); }
   }, true);
   client.auth.onAuthStateChange((event, session) => {
+    if (window.demoSandbox.active) return;
     if (!session) { data.familyId = null; data.member = null; if (realtimeChannel) client.removeChannel(realtimeChannel); document.querySelector('.app-shell').hidden = true; loginForm(); }
     else if (event === 'SIGNED_IN' && !data.familyId) setTimeout(() => { if (!data.familyId) bootstrapFamily().catch(errorMessage); }, 0);
   });
