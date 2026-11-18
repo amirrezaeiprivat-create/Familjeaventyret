@@ -62,6 +62,7 @@
     decorateAdminForm();
     if (realtimeChannel) client.removeChannel(realtimeChannel);
     realtimeChannel = client.channel(`family-${data.familyId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'family_members', filter: `family_id=eq.${data.familyId}` }, () => bootstrapFamily().catch(errorMessage))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quest_submissions', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chores', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .subscribe();
@@ -127,6 +128,14 @@
   function decorateAdminForm() {
     const form = document.getElementById('admin-create-quest');
     if (!form) return;
+    if (!document.getElementById('family-member-management')) {
+      const adminCount = data.members.filter((member) => member.role === 'admin').length;
+      const memberCard = document.createElement('section');
+      memberCard.id = 'family-member-management';
+      memberCard.className = 'card admin-section family-member-management';
+      memberCard.innerHTML = `<div class="section-head"><div><h2>Hantera familjemedlemmar</h2><p class="admin-muted">Ändra roller eller ta bort medlemmar från familjen.</p></div><span class="level-chip">${data.members.length} MEDLEMMAR</span></div><div class="family-member-list">${data.members.map((member) => `<div class="family-member-admin-row" data-family-user="${escHtml(member.user_id)}"><div class="family-member-admin-name"><b>${escHtml(member.display_name)}</b>${member.user_id === data.member.user_id ? '<small>Du</small>' : ''}</div><select data-member-role aria-label="Roll för ${escHtml(member.display_name)}"><option value="player" ${member.role === 'player' ? 'selected' : ''} ${member.role === 'admin' && adminCount <= 1 ? 'disabled' : ''}>Spelare</option><option value="admin" ${member.role === 'admin' ? 'selected' : ''} ${member.role === 'player' && adminCount >= 2 ? 'disabled' : ''}>Administratör</option></select><button class="filter-tab" type="button" data-save-member-role>Spara roll</button><button class="filter-tab admin-remove" type="button" data-remove-family-member ${(member.user_id === data.member.user_id || (member.role === 'admin' && adminCount <= 1)) ? 'disabled' : ''}>Ta bort</button></div>`).join('')}</div>`;
+      form.closest('.admin-section')?.before(memberCard);
+    }
     if (!document.getElementById('invite-family-card')) {
       const invite = document.createElement('section');
       invite.id = 'invite-family-card';
@@ -159,6 +168,7 @@
     const familyName = data.familyName || 'Familjen Rezaei';
     const familyLabel = document.querySelector('.family-switch b');
     if (familyLabel && familyLabel.textContent !== familyName) familyLabel.textContent = familyName;
+    document.querySelectorAll('.admin-nav-label,.admin-nav-item,.admin-mobile-item').forEach((el) => { el.hidden = data.member.role !== 'admin'; });
     const greet = document.querySelector('.welcome-row h1');
     if (greet && !greet.textContent.includes(name)) greet.innerHTML = `God morgon, ${escHtml(name)}! <span>☀️</span>`;
     const profileName = document.querySelector('.profile-card h2');
@@ -248,11 +258,21 @@
       const description = permissionCard.querySelector('p');
       if (description && description.textContent !== 'Du är en av familjens administratörer.') description.textContent = 'Du är en av familjens administratörer.';
     }
-    const about = document.querySelector('#view-root .family-card:not(.admin-profile-link) .level-chip');
+    const aboutCard = [...document.querySelectorAll('#view-root .family-card')].find((card) => card.querySelector('h2')?.textContent.includes('Om den här appen'));
+    const about = aboutCard?.querySelector('.level-chip');
     if (about && about.textContent.includes('ENHETEN')) about.textContent = 'SUPABASE';
-    const aboutText = document.querySelector('#view-root .family-card:not(.admin-profile-link) p');
+    const aboutText = aboutCard?.querySelector('p');
     const syncedText = 'Familjens konton, veckosysslor och godkännanden sparas i den gemensamma databasen.';
     if (aboutText && aboutText.textContent.includes('sparas lokalt') && aboutText.textContent !== syncedText) aboutText.textContent = syncedText;
+    if (document.querySelector('#view-root .profile-layout') && !document.getElementById('family-settings-card')) {
+      const adminCount = data.members.filter((member) => member.role === 'admin').length;
+      const actions = document.createElement('section');
+      actions.id = 'family-settings-card';
+      actions.className = 'card family-card family-settings-card';
+      actions.innerHTML = `<div class="section-head"><div><h2>Familjeinställningar</h2><p>Lämna familjen eller hantera hela familjens äventyr.</p></div></div><div class="family-settings-actions"><button type="button" class="filter-tab family-leave-button" data-leave-family ${data.member.role === 'admin' && adminCount < 2 ? 'disabled' : ''}>Lämna familjen</button>${data.member.role === 'admin' ? '<button type="button" class="filter-tab family-delete-button" data-delete-family>Radera familjen</button>' : ''}</div>${data.member.role === 'admin' && adminCount < 2 ? '<small class="family-settings-note">Bjud först in en annan administratör. Familjen behöver minst en admin.</small>' : ''}`;
+      if (aboutCard) aboutCard.before(actions);
+      else document.querySelector('#view-root .profile-layout')?.after(actions);
+    }
     const adminTitle = document.querySelector('.admin-heading .eyebrow');
     const adminText = `${familyName.toLocaleUpperCase('sv-SE')} · VECKANS PLAN`;
     if (adminTitle && adminTitle.textContent !== adminText) adminTitle.textContent = adminText;
@@ -327,6 +347,51 @@
         await refresh();
         window.showToast?.(`${count} diamantkistor delades ut.`);
       } catch (error) { window.showToast?.(error.message); }
+    }
+    const roleSave = event.target.closest('[data-save-member-role]');
+    if (roleSave && data.familyId && data.member.role === 'admin') {
+      const row = roleSave.closest('[data-family-user]');
+      try {
+        await call(client.rpc('admin_set_member_role', { p_family_id: data.familyId, p_user_id: row.dataset.familyUser, p_role: row.querySelector('[data-member-role]').value }));
+        await refresh();
+        window.showToast?.('Familjemedlemmens roll uppdaterades.');
+      } catch (error) { window.showToast?.(error.message); }
+    }
+    const removeMember = event.target.closest('[data-remove-family-member]');
+    if (removeMember && data.familyId && data.member.role === 'admin') {
+      const row = removeMember.closest('[data-family-user]');
+      const member = data.members.find((item) => item.user_id === row?.dataset.familyUser);
+      if (member && window.confirm(`Ta bort ${member.display_name} från familjen? Deras tilldelade sysslor tas också bort.`)) {
+        try {
+          await call(client.rpc('admin_remove_family_member', { p_family_id: data.familyId, p_user_id: member.user_id }));
+          await refresh();
+          window.showToast?.(`${member.display_name} togs bort från familjen.`);
+        } catch (error) { window.showToast?.(error.message); }
+      }
+    }
+    if (event.target.closest('[data-leave-family]') && data.familyId) {
+      if (window.confirm(`Lämna ${data.familyName}? Du tas bort från familjens medlemslista och tilldelningar.`)) {
+        try {
+          await call(client.rpc('leave_family', { p_family_id: data.familyId }));
+          data.familyId = null; data.member = null;
+          document.querySelector('.app-shell').hidden = true;
+          await bootstrapFamily();
+        } catch (error) { window.showToast?.(error.message); }
+      }
+    }
+    if (event.target.closest('[data-delete-family]') && data.familyId && data.member.role === 'admin') {
+      const typedName = window.prompt(`Detta raderar familjen och dess uppgifter, medlemskap och historik permanent. Skriv familjenamnet exakt för att fortsätta: ${data.familyName}`);
+      if (typedName === data.familyName) {
+        const confirmed = window.confirm(`Bekräfta permanent radering av ${data.familyName}. Åtgärden kan inte ångras.`);
+        if (confirmed) {
+          try {
+            await call(client.rpc('admin_delete_family', { p_family_id: data.familyId }));
+            data.familyId = null; data.member = null;
+            document.querySelector('.app-shell').hidden = true;
+            await bootstrapFamily();
+          } catch (error) { window.showToast?.(error.message); }
+        }
+      } else if (typedName !== null) window.showToast?.('Familjenamnet stämde inte. Ingen data raderades.');
     }
   }, true);
   document.addEventListener('click', async (event) => {
