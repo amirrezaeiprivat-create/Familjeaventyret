@@ -21,6 +21,31 @@
     try { return await call(promise); }
     catch (error) { if (['42P01','PGRST205'].includes(error.code)) return []; throw error; }
   };
+  async function openFamilyChest(button) {
+    const chestType = ({ 'Träkista':'wooden', 'Silverkista':'silver', 'Guldkista':'gold', 'Diamantkista':'diamond' })[button.dataset.chest];
+    if (!chestType) return;
+    const keyName = `family-chest:${data.familyId}:${chestType}`;
+    let requestKey = sessionStorage.getItem(keyName);
+    if (!requestKey) { requestKey = crypto.randomUUID(); sessionStorage.setItem(keyName, requestKey); }
+    button.disabled = true;
+    try {
+      const result = await call(client.rpc('open_creature_chest', { p_family_id: data.familyId, p_chest_type: chestType, p_request_key: requestKey }));
+      sessionStorage.removeItem(keyName);
+      await refresh();
+      const creature = creatureDefinition(result.creature_name);
+      const art = creature ? mascot(creature.icon, 122, creature.palette) : '✨';
+      const chestArt = chestIllustration(button.dataset.chest, 100);
+      const body = result.is_cursed
+        ? `<div class="curse-reveal"><span class="curse-reveal-word">FÖRBANNELSE!</span><div class="modal-creature">${art}</div><span class="rarity cursed-rarity">FÖRBANNELSE</span><h2>${escHtml(result.creature_name)} har vaknat…</h2><p>${escHtml(result.curse_task || '')}</p><p class="curse-modal-note">Deadline ${result.deadline_hours} timmar · Vanliga uppdrag låses tills förbannelsen godkänts.</p><button class="primary-button" data-close>Jag tar mig an det</button></div>`
+        : `<span class="modal-chest">${chestArt}</span><div class="eyebrow">KISTAN ÄR ÖPPNAD!</div><span class="modal-creature">${art}</span><span class="rarity">${escHtml(creature?.label || result.rarity)}</span><h2>${result.is_duplicate ? 'En vän skickar en hälsning!' : `Möt ${escHtml(result.creature_name)}!`}</h2><p>${result.is_duplicate ? `Du har redan ${escHtml(result.creature_name)}. Du fick ${result.shards_awarded} skärvor.` : escHtml(creature?.description || 'En ny vän har hittat hem!')}</p><button class="primary-button" data-close>Härligt!</button>`;
+      window.openModal?.(`<button class="modal-close" data-close aria-label="Stäng">×</button>${body}`);
+    } catch (error) {
+      if (/not enough coins|unknown chest|sign in|membership|required/i.test(error.message || '')) sessionStorage.removeItem(keyName);
+      const message = /not enough coins/i.test(error.message || '') ? 'Du behöver fler mynt för den kistan.' : /unknown chest/i.test(error.message || '') ? 'Den kistan finns inte.' : error.message || 'Kistan kunde inte öppnas just nu. Försök igen.';
+      window.showToast?.(message);
+      button.disabled = false;
+    }
+  }
 
   function showGate(content) {
     root.innerHTML = `<div class="auth-screen"><section class="auth-card"><a class="brand auth-brand" href="#hem"><span class="brand-mark">✦</span><span>familje<span class="brand-light">äventyret</span></span></a>${content}<p class="auth-error" aria-live="polite"></p></section></div>`;
@@ -177,6 +202,9 @@
     if (!data.familyId || !data.member) return;
     const name = data.member.display_name;
     const familyName = data.familyName || 'Familjen Rezaei';
+    const chestNote = document.querySelector('#view-root .shop-card>p:last-child');
+    const syncedChestNote = 'Mynt, skärvor, kistor och varelser sparas i familjens gemensamma samling.';
+    if (chestNote && chestNote.textContent !== syncedChestNote) chestNote.textContent = syncedChestNote;
     const familyLabel = document.querySelector('.family-switch b');
     if (familyLabel && familyLabel.textContent !== familyName) familyLabel.textContent = familyName;
     document.querySelectorAll('.admin-nav-label,.admin-nav-item,.admin-mobile-item').forEach((el) => { el.hidden = data.member.role !== 'admin'; });
@@ -422,7 +450,7 @@
     }
     if (event.target.closest('[data-chest]') && data.familyId) {
       event.preventDefault(); event.stopImmediatePropagation();
-      window.showToast?.('Kistor och varelser flyttas till familjens gemensamma samling i nästa del av kopplingen.');
+      await openFamilyChest(event.target.closest('[data-chest]'));
       return;
     }
     if (event.target.closest('#reset-game') && data.familyId) {
