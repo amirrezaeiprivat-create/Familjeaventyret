@@ -80,7 +80,7 @@ begin
   where id=v_creature.id and family_id=p_family_id and removed_at is null;
 
   insert into public.notifications(family_id,user_id,message)
-  values(p_family_id,v_creature.user_id,'En administratör tog bort '||v_creature.creature_name||' från din varelssamling.');
+  values(p_family_id,v_creature.user_id,'En administratör tog bort '||v_creature.creature_name||' från din varelsesamling.');
 end;
 $$;
 
