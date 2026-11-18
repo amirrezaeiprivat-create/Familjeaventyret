@@ -7,7 +7,7 @@
     return;
   }
 
-  const data = { familyId: null, member: null, members: [], chores: [], submissions: [], creatures: [], creatureEffects: [], plan: null };
+  const data = { familyId: null, member: null, members: [], chores: [], allChores: [], submissions: [], creatures: [], creatureEffects: [], abilityRequests: [], chestCredits: [], familyChallenges: [], plan: null };
   window.remoteFamily = data;
   const escHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const root = document.getElementById('modal-root');
@@ -29,7 +29,7 @@
     if (!requestKey) { requestKey = crypto.randomUUID(); sessionStorage.setItem(keyName, requestKey); }
     button.disabled = true;
     try {
-      const result = await call(client.rpc('open_creature_chest', { p_family_id: data.familyId, p_chest_type: chestType, p_request_key: requestKey }));
+      const result = await call(client.rpc('open_creature_chest', { p_family_id: data.familyId, p_chest_type: chestType, p_request_key: requestKey, p_credit_id: button.dataset.chestCredit || null }));
       sessionStorage.removeItem(keyName);
       await refresh();
       const creature = creatureDefinition(result.creature_name);
@@ -49,6 +49,13 @@
 
   function showGate(content) {
     root.innerHTML = `<div class="auth-screen"><section class="auth-card"><a class="brand auth-brand" href="#hem"><span class="brand-mark">✦</span><span>familje<span class="brand-light">äventyret</span></span></a>${content}<p class="auth-error" aria-live="polite"></p></section></div>`;
+  }
+  function abilityErrorText(error) {
+    const message = String(error?.message || '').toLowerCase();
+    const translations = [
+      [/choose a task assigned to you/,'Välj en uppgift som är tilldelad dig.'],[/choose an easy task/,'Den här förmågan gäller bara lätta uppgifter.'],[/choose a medium task/,'Den här förmågan gäller bara mellansvåra uppgifter.'],[/choose an easy or medium task/,'Välj en lätt eller mellansvår uppgift.'],[/choose another active family member/,'Välj en annan aktiv familjemedlem.'],[/choose another creature/,'Välj en annan varelse i din samling.'],[/target creature is not active/,'Målvarelsen är inte längre aktiv i din samling.'],[/not already assigned/,'Den valda personen har redan uppgiften.'],[/already submitted/,'Uppgiften är redan inskickad eller godkänd.'],[/no upcoming task/,'Det finns ingen tillgänglig uppgift för den här förmågan.'],[/replacement task is not available/,'Ersättningsuppgiften är inte längre ledig.'],[/choose an easy replacement/,'Välj en ledig lätt ersättningsuppgift.'],[/deadline has not passed/,'Uppgiftens deadline har inte passerat ännu.'],[/deadline has passed/,'Deadlinen har passerat. Be om en extra möjlighet via förmågan.'],[/already consumed/,'Varelsen har redan förbrukats.'],[/cooldown/i,'Förmågan vilar fortfarande.'],[/unlocks at creature level/,'Varelsen behöver nå nästa nivå först.'],[/curse tasks/,'Förbannelseuppgifter kan inte påverkas av den här kraften.'],[/active family member/,'Du behöver vara aktiv familjemedlem för att göra detta.']
+    ];
+    return translations.find(([pattern]) => pattern.test(message))?.[1] || error?.message || 'Förmågan kunde inte aktiveras.';
   }
   function errorMessage(error) {
     const target = root.querySelector('.auth-error');
@@ -96,6 +103,9 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chores', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_inventory', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_effects', filter: `family_id=eq.${data.familyId}` }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_ability_requests', filter: `family_id=eq.${data.familyId}` }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_chest_credits', filter: `family_id=eq.${data.familyId}` }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'family_challenges', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .subscribe();
   }
   let bootstrapping = false;
@@ -118,14 +128,17 @@
     const state = window.gameState;
     if (!state) throw new Error('Spelstatusen kunde inte läsas in. Ladda om sidan.');
     const familyId = data.familyId;
-    const [family, members, plans, chores, submissions, creatures, creatureEffects] = await Promise.all([
+    const [family, members, plans, chores, submissions, creatures, creatureEffects, abilityRequests, chestCredits, familyChallenges] = await Promise.all([
       call(client.from('families').select('name').eq('id', familyId).single()),
       call(client.from('family_members').select('family_id,user_id,display_name,role,xp,tokens,shards,streak,is_active').eq('family_id', familyId).eq('is_active', true)),
       call(client.from('weekly_plans').select('*').eq('family_id', familyId).eq('week_start', getMonday()).limit(1)),
-      call(client.from('chores').select('*,chore_assignments(user_id),quest_submissions(*)').eq('family_id', familyId).eq('is_active', true)),
+      call(client.from('chores').select('*,chore_assignments(user_id,deadline_at),quest_submissions(*)').eq('family_id', familyId).eq('is_active', true)),
       call(client.from('quest_submissions').select('*,chores(title,kind,xp_reward,token_reward)').eq('family_id', familyId).order('submitted_at', { ascending: false })),
       optionalRows(client.from('creature_inventory').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).order('acquired_at')),
-      optionalRows(client.from('creature_effects').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).gt('uses_remaining', 0).order('created_at'))
+      optionalRows(client.from('creature_effects').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).gt('uses_remaining', 0).order('created_at')),
+      optionalRows(client.from('creature_ability_requests').select('*').eq('family_id', familyId).order('created_at', { ascending: false })),
+      optionalRows(client.from('creature_chest_credits').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).is('redeemed_at', null).order('created_at')),
+      optionalRows(client.from('family_challenges').select('*').eq('family_id', familyId).in('status', ['active','complete']).order('created_at', { ascending: false }))
     ]);
     data.familyName = family.name;
     data.members = members;
@@ -133,8 +146,12 @@
     data.plan = plans[0] || null;
     data.creatures = creatures;
     data.creatureEffects = creatureEffects;
-    state.creatures = creatures.map((creature) => { const definition = creatureDefinition(creature.creature_name); return { id: creature.id, catalogId: creature.creature_id, name: creature.creature_name, rarity: creature.rarity.toUpperCase(), rarityKey: creature.rarity, level: creature.level, creatureXp: creature.creature_xp, isCursed: creature.is_cursed, cooldownUntil: creature.cooldown_until ? new Date(creature.cooldown_until).getTime() : null, ready: !creature.cooldown_until || new Date(creature.cooldown_until).getTime() <= Date.now(), ability: definition?.ability || '', visualTheme: definition?.visualTheme || '' }; });
+    data.abilityRequests = abilityRequests;
+    data.chestCredits = chestCredits;
+    data.familyChallenges = familyChallenges;
+    state.creatures = creatures.map((creature) => { const definition = creatureDefinition(creature.creature_name); return { id: creature.id, catalogId: creature.creature_id, name: creature.creature_name, rarity: creature.rarity.toUpperCase(), rarityKey: creature.rarity, level: creature.level, creatureXp: creature.creature_xp, isCursed: creature.is_cursed, consumedAt: creature.consumed_at, cooldownUntil: creature.cooldown_until ? new Date(creature.cooldown_until).getTime() : null, ready: !creature.consumed_at && (!creature.cooldown_until || new Date(creature.cooldown_until).getTime() <= Date.now()), ability: definition?.ability || '', abilityKey: definition?.abilityKey || '', minLevel: definition?.minLevel || 1, visualTheme: definition?.visualTheme || '' }; });
     const allChores = chores;
+    data.allChores = allChores;
     data.submissions = submissions;
     if (data.member.role === 'admin' && !data.plan) {
       const planId = await call(client.rpc('create_weekly_plan', { p_family_id: familyId, p_week_start: getMonday() }));
@@ -170,9 +187,89 @@
     });
     state.notifications = (await call(client.from('notifications').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).order('created_at', { ascending: false }).limit(20))).map((n) => ({ message: n.message, createdAt: new Date(n.created_at).getTime() }));
   }
+  const taskEffects = new Set(['remove_easy_once','remove_easy_repeat','remove_easy_or_request_medium','remove_easy_medium','request_remove_medium','request_remove_medium_streak','extend_easy_deadline','extend_medium_deadline','swap_easy','request_transfer_easy','request_transfer_easy_medium','deadline_grace']);
+  function openCreatureAbility(id) {
+    const creature = data.creatures.find((item) => item.id === id);
+    if (!creature) return;
+    const definition = creatureDefinition(creature.creature_name);
+    if (!definition) return;
+    const effectKey = definition.abilityKey;
+    const activeEffect = data.creatureEffects.find((effect) => effect.creature_id === creature.id && effect.uses_remaining > 0 && (!effect.expires_at || new Date(effect.expires_at).getTime() > Date.now()));
+    const levelXp = creature.creature_xp % 100;
+    const cooldownEnd = creature.cooldown_until ? new Date(creature.cooldown_until).getTime() : 0;
+    const cooldownText = cooldownEnd > Date.now() ? new Intl.DateTimeFormat('sv-SE',{dateStyle:'medium',timeStyle:'short'}).format(new Date(cooldownEnd)) : '';
+    const assignedTasks = data.allChores.filter((chore) => chore.kind === 'weekly' && chore.is_active && (chore.chore_assignments || []).some((assignment) => assignment.user_id === data.member.user_id) && !data.submissions.some((submission) => submission.chore_id === chore.id && submission.user_id === data.member.user_id && ['pending_approval','approved'].includes(submission.status)));
+    const allowedDifficulty = ['extend_medium_deadline','request_remove_medium','request_remove_medium_streak'].includes(effectKey) ? ['Mellan'] : ['remove_easy_once','remove_easy_repeat','extend_easy_deadline','request_transfer_easy','swap_easy'].includes(effectKey) ? ['Lätt'] : ['Lätt','Mellan'];
+    const targetTasks = assignedTasks.filter((chore) => (!taskEffects.has(effectKey) || allowedDifficulty.includes(chore.difficulty)) && (effectKey !== 'deadline_grace' || (() => { const assignment = chore.chore_assignments?.find((item) => item.user_id === data.member.user_id); const deadline = assignment?.deadline_at || chore.deadline_at; return deadline && new Date(deadline).getTime() < Date.now(); })()));
+    const targets = data.creatures.filter((item) => !item.is_cursed && !item.consumed_at && item.id !== creature.id);
+    const needsTask = taskEffects.has(effectKey);
+    const needsCreature = ['grant_creature_xp','creature_xp_target_next'].includes(effectKey);
+    const needsMember = ['request_transfer_easy','request_transfer_easy_medium'].includes(effectKey);
+    const needsSwap = effectKey === 'swap_easy';
+    const status = creature.consumed_at ? 'Förbrukad' : creature.level < (definition.minLevel || 1) ? `Låses upp på nivå ${definition.minLevel}` : cooldownText ? `Nedkylning till ${cooldownText}` : activeEffect ? `Aktiv effekt · ${activeEffect.uses_remaining} användning${activeEffect.uses_remaining === 1 ? '' : 'ar'} kvar` : 'Redo';
+    const blocked = Boolean(creature.is_cursed || creature.consumed_at || creature.level < (definition.minLevel || 1) || cooldownText);
+    const taskOptions = targetTasks.map((chore) => `<option value="${escHtml(chore.id)}">${escHtml(chore.title)} · ${escHtml(chore.difficulty)}</option>`).join('');
+    const targetOptions = targets.map((item) => `<option value="${escHtml(item.id)}">${escHtml(item.creature_name)} · nivå ${item.level}</option>`).join('');
+    const memberOptions = data.members.filter((member) => member.user_id !== data.member.user_id).map((member) => `<option value="${escHtml(member.user_id)}">${escHtml(member.display_name)}</option>`).join('');
+    const replacementOptions = data.allChores.filter((chore) => chore.kind === 'weekly' && chore.is_active && chore.difficulty === 'Lätt' && chore.plan_id === data.plan?.id && !(chore.chore_assignments || []).length).map((chore) => `<option value="${escHtml(chore.id)}">${escHtml(chore.title)}</option>`).join('');
+    const selectors = `${needsTask ? `<label class="ability-field">Välj uppgift<select data-ability-task required>${taskOptions}</select>${!taskOptions ? '<small>Du har inga tillgängliga uppgifter som passar den här kraften.</small>' : ''}</label>` : ''}${needsCreature ? `<label class="ability-field">Välj varelse<select data-ability-creature required>${targetOptions}</select>${!targetOptions ? '<small>Du behöver en annan aktiv varelse.</small>' : ''}</label>` : ''}${needsMember ? `<label class="ability-field">Välj familjemedlem<select data-ability-member required>${memberOptions}</select>${!memberOptions ? '<small>Det finns ingen annan aktiv familjemedlem.</small>' : ''}</label>` : ''}${needsSwap ? `<label class="ability-field">Välj ersättningsuppgift<select data-ability-replacement required>${replacementOptions}</select>${!replacementOptions ? '<small>Det finns ingen ledig lätt uppgift i veckoplanen.</small>' : ''}</label>` : ''}`;
+    const unavailableTarget = (needsTask && !targetOptions) || (needsCreature && !targetOptions) || (needsMember && !memberOptions) || (needsSwap && !replacementOptions);
+    const art = mascot(definition.icon, 114, definition.palette);
+    window.openModal?.(`<button class="modal-close" data-close aria-label="Stäng">×</button><section class="creature-ability-detail"><div class="creature-detail-art">${art}</div><div class="eyebrow">${escHtml(definition.label)} · NIVÅ ${creature.level}</div><h2>${escHtml(definition.name)}</h2><p>${escHtml(definition.abilityDescription)}</p><div class="ability-xp"><div><b>Varelse-XP</b><span>${creature.creature_xp} XP · ${levelXp}/100 till nästa nivå</span></div><div class="progress"><span style="width:${levelXp}%"></span></div></div><div class="ability-status ${blocked?'is-muted':'is-ready'}">${blocked && !creature.consumed_at && !cooldownText ? '🔒' : activeEffect ? '✨' : '●'} ${escHtml(status)}</div>${activeEffect ? `<p class="ability-active-effect">Effekten väntar på rätt uppgift${activeEffect.expires_at ? ` · går ut ${new Intl.DateTimeFormat('sv-SE',{dateStyle:'short',timeStyle:'short'}).format(new Date(activeEffect.expires_at))}` : ''}.</p>` : ''}${selectors}<p class="ability-confirm-copy">När du aktiverar visas serverns beslut här. Uppgifter som tas bort ger inga belöningar; förbannelseuppgifter kan inte väljas.</p><button class="primary-button" type="button" data-use-creature="${escHtml(creature.id)}" ${blocked || unavailableTarget ? 'disabled' : ''}>Aktivera förmåga</button></section>`);
+  }
+  async function useCreatureAbility(button) {
+    const id = button.dataset.useCreature;
+    const keyName = `creature-ability:${data.familyId}:${id}`;
+    let requestKey = sessionStorage.getItem(keyName);
+    if (!requestKey) { requestKey = crypto.randomUUID(); sessionStorage.setItem(keyName, requestKey); }
+    button.disabled = true;
+    try {
+      const result = await call(client.rpc('use_creature_ability', {
+        p_family_id: data.familyId,
+        p_creature_instance_id: id,
+        p_request_key: requestKey,
+        p_target_chore_id: root.querySelector('[data-ability-task]')?.value || null,
+        p_secondary_chore_id: root.querySelector('[data-ability-replacement]')?.value || null,
+        p_target_creature_id: root.querySelector('[data-ability-creature]')?.value || null,
+        p_target_user_id: root.querySelector('[data-ability-member]')?.value || null
+      }));
+      if (!result?.ok) {
+        sessionStorage.removeItem(keyName);
+        button.disabled = false;
+        window.showToast?.(abilityErrorText({ message: result?.message || 'Förmågan kunde inte aktiveras.' }));
+        return;
+      }
+      sessionStorage.removeItem(keyName);
+      await refresh();
+      window.openModal?.(`<div class="ability-result"><div class="eyebrow">${result.status === 'pending_admin' ? 'VÄNTAR PÅ ADMIN' : 'FÖRMÅGAN ÄR AKTIVERAD'}</div><h2>${escHtml(result.creature_name || 'Varelsen')}</h2><p>${escHtml(result.message || 'Förmågan har aktiverats.')}</p><button class="primary-button" data-close>Klart</button></div>`);
+    } catch (error) {
+      if (/choose |already submitted|not available|not active|deadline|already consumed|cooldown|unlocks at|curse tasks|family member/i.test(error.message || '')) sessionStorage.removeItem(keyName);
+      window.showToast?.(abilityErrorText(error));
+      button.disabled = false;
+    }
+  }
+  function renderAbilityRequests() {
+    const section = document.getElementById('creature-ability-requests');
+    const form = document.getElementById('admin-create-quest');
+    if (!form || data.member.role !== 'admin') { section?.remove(); return; }
+    const pending = data.abilityRequests.filter((request) => request.status === 'pending');
+    const members = new Map(data.members.map((member) => [member.user_id, member.display_name]));
+    const rows = pending.map((request) => {
+      const chore = data.allChores.find((item) => item.id === request.chore_id);
+      const title = request.request_type === 'deadline_grace' ? 'Extra inlämningsmöjlighet' : request.request_type === 'transfer' ? 'Överföring av uppgift' : 'Borttagning av uppgift';
+      const detail = `${members.get(request.requester_id) || 'Medlem'} · ${chore?.title || 'uppgift'}${request.target_user_id ? ` → ${members.get(request.target_user_id) || 'familjemedlem'}` : ''}`;
+      return `<div class="approval-row ability-request-row"><div class="admin-list-copy"><b>${title}</b><small>${escHtml(detail)} · ${escHtml(request.effect_key)}</small></div><input class="rejection-reason" data-ability-reason placeholder="Anledning vid nekande"><button type="button" class="curse-submit curse-approve" data-ability-decision="approved" data-ability-request="${escHtml(request.id)}">Godkänn</button><button type="button" class="filter-tab admin-remove" data-ability-decision="rejected" data-ability-request="${escHtml(request.id)}">Neka</button></div>`;
+    }).join('');
+    const card = section || document.createElement('section');
+    card.id = 'creature-ability-requests'; card.className = 'card admin-section creature-ability-requests';
+    const markup = `<div class="section-head"><div><h2>Varelseförfrågningar</h2><p class="admin-muted">Adminbeslut krävs för uppgiftsändringar. Beslutet skickas till spelaren.</p></div><span class="level-chip">${pending.length} VÄNTAR</span></div>${rows || '<p class="admin-muted">Inga varelseförfrågningar väntar.</p>'}`;
+    if (card.innerHTML !== markup) card.innerHTML = markup;
+    if (!section) form.closest('.admin-section')?.before(card);
+  }
   function decorateAdminForm() {
     const form = document.getElementById('admin-create-quest');
     if (!form) return;
+    renderAbilityRequests();
     const existingMemberCard = document.getElementById('family-member-management');
     const memberCard = existingMemberCard || document.createElement('section');
     const adminCount = data.members.filter((member) => member.role === 'admin').length;
@@ -217,6 +314,22 @@
     const chestNote = document.querySelector('#view-root .shop-card>p:last-child');
     const syncedChestNote = 'Mynt, skärvor, kistor och varelser sparas i familjens gemensamma samling.';
     if (chestNote && chestNote.textContent !== syncedChestNote) chestNote.textContent = syncedChestNote;
+    const shopCard = document.querySelector('#view-root .shop-card');
+    if (shopCard) {
+      const credits = data.chestCredits.filter((credit) => !credit.redeemed_at);
+      let creditShelf = document.getElementById('creature-chest-credits');
+      if (credits.length) {
+        if (!creditShelf) { creditShelf = document.createElement('div'); creditShelf.id = 'creature-chest-credits'; creditShelf.className = 'creature-chest-credits'; shopCard.insertBefore(creditShelf, shopCard.querySelector('.chest-row')); }
+        const markup = `<b>Dina fria kistor</b><div>${credits.map((credit) => `<button type="button" class="buy-button" data-chest="Träkista" data-chest-credit="${escHtml(credit.id)}">Öppna gratis träkista</button>`).join('')}</div>`;
+        if (creditShelf.innerHTML !== markup) creditShelf.innerHTML = markup;
+      } else creditShelf?.remove();
+      let challengeShelf = document.getElementById('family-challenges-live');
+      if (data.familyChallenges.length) {
+        if (!challengeShelf) { challengeShelf = document.createElement('section'); challengeShelf.id = 'family-challenges-live'; challengeShelf.className = 'family-challenges-live'; shopCard.after(challengeShelf); }
+        const markup = `<div class="section-head"><h2>Familjens utmaningar</h2><span class="level-chip">${data.familyChallenges.filter((item) => item.status === 'active').length} AKTIVA</span></div>${data.familyChallenges.map((item) => `<div class="family-challenge-row"><div><b>${escHtml(item.title)}</b><small>${item.status === 'complete' ? 'Klar!' : `Avslutas ${new Intl.DateTimeFormat('sv-SE',{dateStyle:'medium'}).format(new Date(item.ends_at))}`}</small></div><span>${item.progress}/${item.goal}</span><div class="progress"><span style="width:${Math.min(100,Math.round(item.progress/item.goal*100))}%"></span></div></div>`).join('')}`;
+        if (challengeShelf.innerHTML !== markup) challengeShelf.innerHTML = markup;
+      } else challengeShelf?.remove();
+    }
     const familyLabel = document.querySelector('.family-switch b');
     if (familyLabel && familyLabel.textContent !== familyName) familyLabel.textContent = familyName;
     document.querySelectorAll('.admin-nav-label,.admin-nav-item,.admin-mobile-item').forEach((el) => { el.hidden = data.member.role !== 'admin'; });
@@ -380,6 +493,27 @@
   }
   document.addEventListener('submit', (event) => { onAuthSubmit(event); onFamilySubmit(event); }, true);
   document.addEventListener('click', async (event) => {
+    const abilityButton = event.target.closest('[data-ability]');
+    if (abilityButton && data.familyId) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      openCreatureAbility(abilityButton.dataset.ability);
+      return;
+    }
+    const activateAbility = event.target.closest('[data-use-creature]');
+    if (activateAbility && data.familyId) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      await useCreatureAbility(activateAbility);
+      return;
+    }
+    const abilityDecision = event.target.closest('[data-ability-decision]');
+    if (abilityDecision && data.familyId && data.member.role === 'admin') {
+      event.preventDefault(); event.stopImmediatePropagation(); abilityDecision.disabled = true;
+      try {
+        await call(client.rpc('decide_creature_ability_request', { p_request_id: abilityDecision.dataset.abilityRequest, p_decision: abilityDecision.dataset.abilityDecision, p_reason: abilityDecision.closest('.ability-request-row')?.querySelector('[data-ability-reason]')?.value || '' }));
+        await refresh(); window.showToast?.('Varelseförfrågan hanterad.');
+      } catch (error) { abilityDecision.disabled = false; window.showToast?.(error.message); }
+      return;
+    }
     const mode = event.target.closest('[data-auth-mode]');
     if (mode) { loginForm(mode.dataset.authMode); return; }
     if (event.target.closest('[data-signout]')) { await client.auth.signOut(); loginForm(); }
@@ -398,6 +532,12 @@
         await refresh();
         window.showToast?.(`${count} diamantkistor delades ut.`);
       } catch (error) { window.showToast?.(error.message); }
+    }
+    const chestCredit = event.target.closest('[data-chest-credit]');
+    if (chestCredit && data.familyId) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      await openFamilyChest(chestCredit);
+      return;
     }
     const roleSave = event.target.closest('[data-save-member-role]');
     if (roleSave && data.familyId && data.member.role === 'admin') {
