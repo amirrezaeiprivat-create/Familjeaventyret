@@ -7,7 +7,7 @@
     return;
   }
 
-  const data = { familyId: null, member: null, members: [], chores: [], allChores: [], submissions: [], creatures: [], creatureEffects: [], abilityRequests: [], chestCredits: [], familyChallenges: [], plan: null };
+  const data = { familyId: null, member: null, members: [], chores: [], allChores: [], submissions: [], creatures: [], familyCreatures: [], creatureEffects: [], abilityRequests: [], chestCredits: [], familyChallenges: [], plan: null };
   window.remoteFamily = data;
   window.demoSandbox = { active: false, snapshot: null, workingState: null };
   const escHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -146,13 +146,18 @@
     data.familyName = family.name;
     data.members = members;
     data.member = members.find((member) => member.user_id === data.member.user_id) || data.member;
+    data.familyCreatures = [];
+    if (data.member.role === 'admin') {
+      try { data.familyCreatures = await call(client.rpc('admin_list_family_creatures', { p_family_id: familyId })); }
+      catch (error) { if (!['PGRST202','42883'].includes(error.code)) throw error; }
+    }
     data.plan = plans[0] || null;
-    data.creatures = creatures;
+    data.creatures = creatures.filter((creature) => !creature.removed_at);
     data.creatureEffects = creatureEffects;
     data.abilityRequests = abilityRequests;
     data.chestCredits = chestCredits;
     data.familyChallenges = familyChallenges;
-    state.creatures = creatures.map((creature) => { const definition = creatureDefinition(creature.creature_name); return { id: creature.id, catalogId: creature.creature_id, name: creature.creature_name, rarity: creature.rarity.toUpperCase(), rarityKey: creature.rarity, level: creature.level, creatureXp: creature.creature_xp, isCursed: creature.is_cursed, consumedAt: creature.consumed_at, cooldownUntil: creature.cooldown_until ? new Date(creature.cooldown_until).getTime() : null, ready: !creature.consumed_at && (!creature.cooldown_until || new Date(creature.cooldown_until).getTime() <= Date.now()), ability: definition?.ability || '', abilityKey: definition?.abilityKey || '', minLevel: definition?.minLevel || 1, visualTheme: definition?.visualTheme || '' }; });
+    state.creatures = data.creatures.map((creature) => { const definition = creatureDefinition(creature.creature_name); return { id: creature.id, catalogId: creature.creature_id, name: creature.creature_name, rarity: creature.rarity.toUpperCase(), rarityKey: creature.rarity, level: creature.level, creatureXp: creature.creature_xp, isCursed: creature.is_cursed, consumedAt: creature.consumed_at, cooldownUntil: creature.cooldown_until ? new Date(creature.cooldown_until).getTime() : null, ready: !creature.consumed_at && (!creature.cooldown_until || new Date(creature.cooldown_until).getTime() <= Date.now()), ability: definition?.ability || '', abilityKey: definition?.abilityKey || '', minLevel: definition?.minLevel || 1, visualTheme: definition?.visualTheme || '' }; });
     const allChores = chores;
     data.allChores = allChores;
     data.submissions = submissions;
@@ -315,6 +320,11 @@
     const managerMarkup = `<div class="section-head"><div><h2>Hantera utdelade sysslor</h2><p class="admin-muted">Ta bort en syssla från veckans uppgifter. Godkända sysslor behålls i historiken.</p></div><span class="level-chip">${data.weeklyChores.length} SYSSLOR</span></div>${weeklyChoreMarkup || '<p class="admin-muted">Inga aktiva veckosysslor att hantera.</p>'}`;
     if (choreManager.innerHTML !== managerMarkup) choreManager.innerHTML = managerMarkup;
     if (!choreManager.isConnected) document.getElementById('weekly-plan-card')?.after(choreManager);
+    let creatureManager = document.getElementById('admin-family-creatures');
+    if (!creatureManager) { creatureManager = document.createElement('section'); creatureManager.id = 'admin-family-creatures'; creatureManager.className = 'card admin-section admin-family-creatures'; }
+    const creatureMarkup = `<div class="section-head"><div><h2>Hantera familjens varelser</h2><p class="admin-muted">Ta bort en vanlig varelse från en familjemedlems samling.</p></div><span class="level-chip">${data.familyCreatures.length} VARELSER</span></div>${data.familyCreatures.map((creature) => `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(creature.creature_name)} · Nivå ${creature.level}</b><small>${escHtml(creature.display_name)} · ${escHtml(creature.rarity)}</small></div><button class="filter-tab admin-remove" type="button" data-remove-family-creature="${escHtml(creature.id)}">Ta bort</button></div>`).join('') || '<p class="admin-muted">Inga vanliga varelser finns i familjens samlingar.</p>'}`;
+    if (creatureManager.innerHTML !== creatureMarkup) creatureManager.innerHTML = creatureMarkup;
+    if (!creatureManager.isConnected) choreManager.after(creatureManager);
     if (form.querySelector('[data-assignee-picker]')) return;
     const picker = document.createElement('fieldset');
     picker.className = 'assignee-picker';
@@ -550,6 +560,19 @@
       deleteWeeklyChore.disabled = true;
       try { await call(client.rpc('admin_delete_weekly_chore', { p_chore_id: deleteWeeklyChore.dataset.deleteWeeklyChore })); await refresh(); window.showToast?.('Sysslan har tagits bort från veckans uppgifter.'); }
       catch (error) { deleteWeeklyChore.disabled = false; window.showToast?.(error.message); }
+      return;
+    }
+    const removeFamilyCreature = event.target.closest('[data-remove-family-creature]');
+    if (removeFamilyCreature && data.familyId && data.member.role === 'admin') {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const creature = data.familyCreatures.find((item) => item.id === removeFamilyCreature.dataset.removeFamilyCreature);
+      if (!creature || !window.confirm(`Ta bort ${creature.creature_name} från ${creature.display_name}s samling?`)) return;
+      removeFamilyCreature.disabled = true;
+      try {
+        await call(client.rpc('admin_remove_family_creature', { p_family_id: data.familyId, p_creature_instance_id: creature.id }));
+        await refresh();
+        window.showToast?.(`${creature.creature_name} har tagits bort från samlingen.`);
+      } catch (error) { removeFamilyCreature.disabled = false; window.showToast?.(error.message); }
       return;
     }
     const abilityButton = event.target.closest('[data-ability]');
