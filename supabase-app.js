@@ -475,7 +475,7 @@
     });
   }
   const viewObserver = new MutationObserver(() => { if (window.demoSandbox.active) return; decorateLiveUi(); decorateAdminForm(); });
-  viewObserver.observe(document.getElementById('view-root'), { childList: true, subtree: true });
+  viewObserver.observe(document.getElementById('view-root'), { childList: true });
   async function refresh() {
     if (window.demoSandbox.active) return;
     try { await loadFamilyData(); window.renderGame?.(); decorateAdminForm(); }
