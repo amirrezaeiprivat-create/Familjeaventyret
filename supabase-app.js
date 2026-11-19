@@ -350,7 +350,7 @@
       let creditShelf = document.getElementById('creature-chest-credits');
       if (credits.length) {
         if (!creditShelf) { creditShelf = document.createElement('div'); creditShelf.id = 'creature-chest-credits'; creditShelf.className = 'creature-chest-credits'; shopCard.insertBefore(creditShelf, shopCard.querySelector('.chest-row')); }
-        const markup = `<b>Dina fria kistor</b><div>${credits.map((credit) => `<button type="button" class="buy-button" data-chest="Träkista" data-chest-credit="${escHtml(credit.id)}">Öppna gratis träkista</button>`).join('')}</div>`;
+        const markup = `<b>Dina fria kistor</b><div>${credits.map((credit) => { const chestName = ({ wooden: 'Träkista', silver: 'Silverkista', gold: 'Guldkista', diamond: 'Diamantkista' })[credit.chest_type] || 'Träkista'; return `<button type="button" class="buy-button" data-chest="${chestName}" data-chest-credit="${escHtml(credit.id)}">Öppna gratis ${chestName.toLowerCase()}</button>`; }).join('')}</div>`;
         if (creditShelf.innerHTML !== markup) creditShelf.innerHTML = markup;
       } else creditShelf?.remove();
       let challengeShelf = document.getElementById('family-challenges-live');
