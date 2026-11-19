@@ -22,6 +22,7 @@ create table if not exists public.family_members (
   created_at timestamptz not null default now(),
   primary key (family_id, user_id)
 );
+alter table public.family_members add column if not exists last_streak_date date;
 
 create table if not exists public.family_invites (
   id uuid primary key default gen_random_uuid(),
