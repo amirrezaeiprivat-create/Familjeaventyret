@@ -289,3 +289,50 @@ button{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focu
  .family-member-admin-row{grid-template-columns:minmax(0,1fr) minmax(115px,.8fr);gap:8px}
  .family-member-admin-row button{min-height:42px}
 }
+
+/* Section navigation keeps the original form nodes and their entered values. */
+.admin-picker {
+  display: flex; flex-wrap: wrap; gap: 6px; min-width: 0;
+  margin: 0 0 18px; padding: 8px; border: 1px solid var(--line);
+  border-radius: 16px; background: var(--card);
+}
+.admin-picker legend, .admin-picker input {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+}
+.admin-picker label { position: relative; flex: 1 1 auto; cursor: pointer }
+.admin-picker span {
+  display: grid; place-items: center; min-height: 44px; padding: 4px 10px;
+  border-radius: 10px; font-size: 14px; font-weight: 700; color: var(--ink);
+}
+.admin-picker label:hover span { background: var(--pale) }
+.admin-picker input:checked + span { background: var(--ink); color: white }
+.admin-picker input:focus-visible + span { outline: 3px solid var(--green); outline-offset: 2px }
+#view-root:not(:has(#admin-next-week-card)) [data-area="next"],
+#view-root:not(:has(#family-member-management)) [data-area="family"] { display: none }
+.admin-picker:has(:checked) ~ .admin-section,
+.admin-picker:not(:has([value="inbox"]:checked)) ~ .admin-metrics { display: none }
+.admin-picker:has([value="inbox"]:checked) ~ :is(.admin-inbox,.creature-ability-requests),
+.admin-picker:has([value="week"]:checked) ~ :is(.weekly-plan-card,.admin-weekly-chores,.admin-section:has(#admin-create-quest)),
+.admin-picker:has([value="next"]:checked) ~ .admin-next-week-card,
+.admin-picker:has([value="family"]:checked) ~ :is(.family-member-management,.invite-family-card),
+.admin-picker:has([value="creatures"]:checked) ~ :is(#admin-family-creatures,.admin-creature-section),
+.admin-picker:has([value="tools"]:checked) ~ :is(.admin-self-coins,.sandbox-entry-card) { display: block }
+.admin-section .admin-quest-form { grid-template-columns: repeat(6,minmax(0,1fr)) }
+.admin-section .admin-quest-form > label { grid-column: span 2; min-width: 0; font-size: 13px }
+.admin-section .admin-quest-form > label:nth-child(-n+2) { grid-column: span 3 }
+.admin-section .admin-quest-form > button { grid-column: 1/-1; justify-self: start }
+.admin-section .admin-quest-form fieldset { min-width: 0; margin: 0 }
+.admin-section .admin-quest-form fieldset label:has(input) {
+  display: inline-flex; align-items: center; min-height: 40px; gap: 8px; font-size: 13px;
+}
+.admin-section .admin-quest-form input:is([type=checkbox],[type=radio]) {
+  width: 18px; height: 18px; min-height: 0; flex: none; padding: 0; margin: 0; box-shadow: none;
+}
+@media (max-width:760px) {
+  .admin-picker { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)) }
+  .admin-section .admin-quest-form { grid-template-columns: minmax(0,1fr) }
+  .admin-section .admin-quest-form > label:nth-child(n),
+  .admin-section .admin-quest-form > button { grid-column: 1 }
+  .admin-section .admin-quest-form > button { width: 100%; min-height: 46px }
+  .admin-section .admin-quest-form :is(select,input:not([type=checkbox],[type=radio])) { font-size: 16px }
+}
