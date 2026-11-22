@@ -227,7 +227,7 @@
       const submitter = members.find((m) => m.user_id === last?.user_id)?.display_name || 'Familjemedlem';
       return { id: c.id, submissionId: last?.id, name: c.title, task: c.description, status: c.resolved_at ? 'defeated' : last?.status === 'pending_approval' ? 'pending' : 'active', submittedBy: submitter, canSubmit: mine && last?.status !== 'pending_approval', submittedAt: last ? new Date(last.submitted_at).getTime() : null, deadlineAt: c.deadline_at ? new Date(c.deadline_at).getTime() : Date.now() + 86400000, isCursed: true };
     });
-    state.notifications = (await call(client.from('notifications').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).order('created_at', { ascending: false }).limit(20))).map((n) => ({ message: n.message, createdAt: new Date(n.created_at).getTime() }));
+    state.notifications = await loadNotifications(familyId, data.member.user_id);
   }
   const taskEffects = new Set(['remove_easy_once','remove_easy_repeat','remove_easy_or_request_medium','remove_easy_medium','request_remove_medium','request_remove_medium_streak','extend_easy_deadline','extend_medium_deadline','swap_easy','request_transfer_easy','request_transfer_easy_medium','deadline_grace']);
   function openCreatureAbility(id) {
@@ -603,6 +603,9 @@
       await bootstrapFamily();
     } catch (error) { errorMessage(error); }
   }
+  async function loadNotifications(familyId, userId) {
+    return (await call(client.from('notifications').select('*').eq('family_id', familyId).eq('user_id', userId).order('created_at', { ascending: false }).limit(20))).map((n) => ({ message: n.message, createdAt: new Date(n.created_at).getTime() }));
+  }
   document.addEventListener('submit', (event) => { onAuthSubmit(event); onFamilySubmit(event); }, true);
   document.addEventListener('click', async (event) => {
     const demoStart = event.target.closest('[data-demo-start]');
@@ -610,6 +613,25 @@
     const demoExit = event.target.closest('[data-demo-exit]');
     if (demoExit && window.demoSandbox.active) { event.preventDefault(); event.stopImmediatePropagation(); await stopDemoMode(); return; }
     if (window.demoSandbox.active) return;
+    const bell = event.target.closest('.notification-button');
+    if (bell && data.member && data.familyId) {
+      event.stopImmediatePropagation();
+      const familyId = data.familyId;
+      const userId = data.member.user_id;
+      bell.disabled = true;
+      try {
+        const notices = await loadNotifications(familyId, userId);
+        if (data.familyId === familyId && data.member?.user_id === userId && !window.demoSandbox.active) {
+          window.gameState.notifications = notices;
+          window.showNotifications();
+        }
+      } catch {
+        window.showToast?.('Aviseringarna kunde inte hämtas. Försök igen.');
+      } finally {
+        bell.disabled = false;
+      }
+      return;
+    }
     const deleteWeeklyChore = event.target.closest('[data-delete-weekly-chore]');
     if (deleteWeeklyChore && data.familyId && data.member.role === 'admin') {
       event.preventDefault(); event.stopImmediatePropagation();
