@@ -222,7 +222,7 @@
     const mapped = submissions.map((s) => ({ id: s.id, questId: s.chore_id, questTitle: s.chores?.title || 'Uppdrag', submittedBy: members.find((m) => m.user_id === s.user_id)?.display_name || 'Familjemedlem', userId: s.user_id, kind: s.chores?.kind || 'weekly', submittedAt: new Date(s.submitted_at).getTime(), decidedAt: s.decided_at ? new Date(s.decided_at).getTime() : null, status: s.status, xp: s.xp_reward, tokens: s.token_reward, reason: s.rejection_reason }));
     state.questSubmissions = mapped;
     state.completed = submissions.filter((s) => s.status === 'approved' && s.chores?.kind === 'weekly' && s.user_id === data.member.user_id).map((s) => s.chore_id);
-    state.customQuests = data.chores.filter((c) => c.kind === 'weekly').map((c) => ({ id: c.id, title: c.title, detail: c.description, icon: 'dish', color: 'green', xp: c.xp_reward, tokens: c.token_reward, difficulty: c.difficulty || 'Lätt' }));
+    state.customQuests = data.chores.filter((c) => c.kind === 'weekly').map((c) => { const assignment = (c.chore_assignments || []).find((item) => item.user_id === data.member.user_id); return ({ id: c.id, title: c.title, detail: c.description, scheduledFor: assignment?.scheduled_for || null, icon: 'dish', color: 'green', xp: c.xp_reward, tokens: c.token_reward, difficulty: c.difficulty || 'Lätt' }); });
     state.curses = allChores.filter((c) => c.kind === 'curse').map((c) => {
       const last = c.quest_submissions?.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))[0];
       const mine = (c.chore_assignments || []).some((a) => a.user_id === data.member.user_id);
@@ -368,7 +368,8 @@
       nextWeekCard.id = 'admin-next-week-card';
       nextWeekCard.className = 'card admin-section admin-next-week-card';
       const days = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
-      nextWeekCard.innerHTML = `<div class="section-head"><div><h2>Planera nästa vecka</h2><p class="admin-muted">Skapa sysslor i förväg och välj om de ska göras ett visst antal gånger eller på särskilda dagar. Veckan börjar ${escHtml(nextPlanLabel)}.</p></div><span class="level-chip">${data.nextPlan?.status === 'closed' ? 'STÄNGD' : 'NÄSTA VECKA'}</span></div><form id="admin-next-week-quest" class="admin-quest-form next-week-quest-form"><label>Sysslans namn<input name="title" required maxlength="85" placeholder="Till exempel: Mata husdjuret"></label><label>Beskrivning<input name="detail" maxlength="90" placeholder="Påminnelse eller instruktion"></label><label>XP-belöning<input name="xp" type="number" min="0" max="500" value="15" required></label><label>Myntbelöning<input name="tokens" type="number" min="0" max="100" value="3" required></label><label>Svårighetsgrad<select name="difficulty"><option value="Lätt">Lätt</option><option value="Mellan">Mellan</option><option value="Svår">Svår</option></select></label><fieldset class="next-week-assignees"><legend>Tilldela till</legend>${data.members.map((member) => `<label><input type="checkbox" name="assignees" value="${escHtml(member.user_id)}" checked> ${escHtml(member.display_name)}</label>`).join('')}</fieldset><fieldset class="next-week-schedule"><legend>Hur ofta ska sysslan göras?</legend><label><input type="radio" name="scheduleMode" value="count" checked> Antal gånger i veckan</label><label><input type="radio" name="scheduleMode" value="days"> Välj veckodagar</label><label class="frequency-choice" data-frequency-choice>Antal tillfällen<select name="frequency">${Array.from({length:7},(_,index)=>`<option value="${index+1}">${index+1} ${index===0?'gång':'gånger'} i veckan</option>`).join('')}</select></label><div class="weekday-choice" data-weekday-choice hidden>${days.map((day,index)=>`<label><input type="checkbox" name="weekdays" value="${index+1}"> ${day}</label>`).join('')}</div></fieldset><button class="primary-button" type="submit" ${data.nextPlan?.status === 'closed' ? 'disabled' : ''}>+ Lägg till nästa vecka</button></form><div class="admin-list-row next-week-list-heading"><b>Planerade sysslor</b><span>${data.nextWeekChores.length} tillfällen</span></div><div class="admin-next-week-list">${data.nextWeekChores.map((chore)=>{const assigned=(chore.chore_assignments||[]).map((assignment)=>memberNames.get(assignment.user_id)).filter(Boolean);const completed=(chore.quest_submissions||[]).some((submission)=>submission.status==='approved');return `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(chore.title)}</b><small>${escHtml(assigned.join(', ')||'Ingen tilldelad')} · ${escHtml(chore.difficulty||'Lätt')} · ${chore.xp_reward} XP · ${chore.token_reward} mynt</small></div><button class="filter-tab admin-remove" type="button" data-delete-weekly-chore="${escHtml(chore.id)}" ${completed?'disabled title="En redan godkänd uppgift kan inte tas bort."':''}>Ta bort</button></div>`}).join('') || '<p class="admin-muted">Inga sysslor planerade ännu.</p>'}</div>`;
+      const memberOptions = data.members.map((member) => `<option value="${escHtml(member.user_id)}">${escHtml(member.display_name)}</option>`).join('');
+      nextWeekCard.innerHTML = `<div class="section-head"><div><h2>Planera nästa vecka</h2><p class="admin-muted">Välj om sysslan görs tillsammans eller skapa ett schema med en ansvarig person per dag. Veckan börjar ${escHtml(nextPlanLabel)}.</p></div><span class="level-chip">${data.nextPlan?.status === 'closed' ? 'STÄNGD' : 'NÄSTA VECKA'}</span></div><form id="admin-next-week-quest" class="admin-quest-form next-week-quest-form"><label>Sysslans namn<input name="title" required maxlength="85" placeholder="Till exempel: Töm diskmaskinen"></label><label>Beskrivning<input name="detail" maxlength="90" placeholder="Påminnelse eller instruktion"></label><label>XP-belöning<input name="xp" type="number" min="0" max="500" value="15" required></label><label>Myntbelöning<input name="tokens" type="number" min="0" max="100" value="3" required></label><label>Svårighetsgrad<select name="difficulty"><option value="Lätt">Lätt</option><option value="Mellan">Mellan</option><option value="Svår">Svår</option></select></label><fieldset class="next-week-assignees" data-count-assignees><legend>Gör sysslan tillsammans</legend><p class="schedule-help">Alla valda personer får samma uppgift och kan samarbeta.</p>${data.members.map((member) => `<label><input type="checkbox" name="assignees" value="${escHtml(member.user_id)}" checked> ${escHtml(member.display_name)}</label>`).join('')}</fieldset><fieldset class="next-week-schedule"><legend>Hur ska sysslan fördelas?</legend><label><input type="radio" name="scheduleMode" value="count" checked> Gemensam syssla · antal gånger</label><label><input type="radio" name="scheduleMode" value="days"> En ansvarig per veckodag</label><label class="frequency-choice" data-frequency-choice>Antal tillfällen<select name="frequency">${Array.from({length:7},(_,index)=>`<option value="${index+1}">${index+1} ${index===0?'gång':'gånger'} i veckan</option>`).join('')}</select></label><div class="weekday-assignment-list" data-weekday-choice hidden><p class="schedule-help">Välj dag och ansvarig. Du kan fördela till exempel sex dagar jämnt mellan tre personer.</p>${days.map((day,index)=>`<label class="weekday-assignment" data-weekday-row><span class="weekday-assignment-day"><input type="checkbox" name="weekdays" value="${index+1}"><b>${day}</b></span><select name="weekdayAssignee" aria-label="Ansvarig för ${day}" disabled>${memberOptions}</select></label>`).join('')}<output class="weekday-assignment-summary" data-schedule-summary>Välj vilka dagar sysslan ska göras.</output></div></fieldset><button class="primary-button" type="submit" ${data.nextPlan?.status === 'closed' ? 'disabled' : ''}>+ Lägg till nästa vecka</button></form><div class="admin-list-row next-week-list-heading"><b>Planerade sysslor</b><span>${data.nextWeekChores.length} tillfällen</span></div><div class="admin-next-week-list">${data.nextWeekChores.map((chore)=>{const assigned=(chore.chore_assignments||[]).map((assignment)=>memberNames.get(assignment.user_id)).filter(Boolean);const completed=(chore.quest_submissions||[]).some((submission)=>submission.status==='approved');return `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(chore.title)}</b><small>${escHtml(assigned.join(', ')||'Ingen tilldelad')} · ${escHtml(chore.difficulty||'Lätt')} · ${chore.xp_reward} XP · ${chore.token_reward} mynt</small></div><button class="filter-tab admin-remove" type="button" data-delete-weekly-chore="${escHtml(chore.id)}" ${completed?'disabled title="En redan godkänd uppgift kan inte tas bort."':''}>Ta bort</button></div>`}).join('') || '<p class="admin-muted">Inga sysslor planerade ännu.</p>'}</div>`;
       nextWeekCard.dataset.memberSignature = nextWeekSignature;
       document.getElementById('weekly-plan-card')?.after(nextWeekCard);
     }
@@ -836,12 +837,33 @@
   }, true);
   document.addEventListener('change', (event) => {
     const scheduleForm = event.target.closest('#admin-next-week-quest');
-    if (!scheduleForm || event.target.name !== 'scheduleMode') return;
+    if (!scheduleForm) return;
     const mode = scheduleForm.querySelector('[name="scheduleMode"]:checked')?.value;
-    scheduleForm.querySelector('[data-frequency-choice]').hidden = mode !== 'count';
-    scheduleForm.querySelector('[data-weekday-choice]').hidden = mode !== 'days';
+    if (event.target.name === 'scheduleMode') {
+      scheduleForm.querySelector('[data-frequency-choice]').hidden = mode !== 'count';
+      scheduleForm.querySelector('[data-weekday-choice]').hidden = mode !== 'days';
+      scheduleForm.querySelector('[data-count-assignees]').hidden = mode !== 'count';
+    }
+    if (event.target.name === 'weekdays') {
+      const row = event.target.closest('[data-weekday-row]');
+      const person = row?.querySelector('[name="weekdayAssignee"]');
+      if (person) person.disabled = !event.target.checked;
+      row?.classList.toggle('is-selected', event.target.checked);
+    }
+    if (event.target.name === 'weekdays' || event.target.name === 'weekdayAssignee') {
+      const rows = [...scheduleForm.querySelectorAll('[data-weekday-row]')].filter((row) => row.querySelector('[name="weekdays"]').checked);
+      const summary = scheduleForm.querySelector('[data-schedule-summary]');
+      if (!rows.length) { summary.textContent = 'Välj vilka dagar sysslan ska göras.'; return; }
+      const totals = new Map();
+      rows.forEach((row) => {
+        const person = row.querySelector('[name="weekdayAssignee"]');
+        const name = person.selectedOptions[0]?.textContent || 'Familjemedlem';
+        totals.set(name, (totals.get(name) || 0) + 1);
+      });
+      summary.textContent = `${rows.length} dagar · ${[...totals].map(([name,count]) => `${name} ${count}`).join(' · ')}`;
+    }
   });
-  document.addEventListener('submit', async (event) => {
+    document.addEventListener('submit', async (event) => {
     if (window.demoSandbox.active) return;
     if (event.target.id === 'admin-prizes-form' && data.familyId) {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -873,30 +895,41 @@
       event.stopImmediatePropagation();
       if (data.member.role !== 'admin' || !data.nextPlan || data.nextPlan.status !== 'open') return;
       const form = new FormData(event.target);
-      const assignees = [...event.target.querySelectorAll('[name="assignees"]:checked')].map((el) => el.value);
-      if (!assignees.length) { window.showToast?.('Välj minst en familjemedlem.'); return; }
       const mode = String(form.get('scheduleMode') || 'count');
-      const weekdays = mode === 'days' ? [...event.target.querySelectorAll('[name="weekdays"]:checked')].map((el) => Number(el.value)) : null;
-      if (mode === 'days' && !weekdays.length) { window.showToast?.('Välj minst en veckodag.'); return; }
-      const button = event.submitter;
+      const title = String(form.get('title') || '').trim();
+      const common = {
+        p_plan_id: data.nextPlan.id,
+        p_title: title,
+        p_description: String(form.get('detail') || '').trim(),
+        p_xp: Number(form.get('xp')),
+        p_tokens: Number(form.get('tokens')),
+        p_difficulty: String(form.get('difficulty') || 'Lätt')
+      };
+      let assignees = [];
+      let schedule = [];
+      if (mode === 'count') {
+        assignees = [...event.target.querySelectorAll('[name="assignees"]:checked')].map((el) => el.value);
+        if (!assignees.length) { window.showToast?.('Välj minst en person som ska göra sysslan tillsammans.'); return; }
+      } else {
+        schedule = [...event.target.querySelectorAll('[data-weekday-row]')]
+          .filter((row) => row.querySelector('[name="weekdays"]').checked)
+          .map((row) => ({ day: Number(row.querySelector('[name="weekdays"]').value), user_id: row.querySelector('[name="weekdayAssignee"]').value }));
+        if (!schedule.length) { window.showToast?.('Välj minst en dag och ansvarig person.'); return; }
+        if (schedule.some((item) => !item.user_id)) { window.showToast?.('Välj en ansvarig för varje vald dag.'); return; }
+      }
+            const button = event.submitter;
       if (button) button.disabled = true;
       try {
-        const count = await call(client.rpc('add_scheduled_weekly_chores', {
-          p_plan_id: data.nextPlan.id,
-          p_title: String(form.get('title') || '').trim(),
-          p_description: String(form.get('detail') || '').trim(),
-          p_xp: Number(form.get('xp')),
-          p_tokens: Number(form.get('tokens')),
-          p_assignees: assignees,
-          p_difficulty: String(form.get('difficulty') || 'Lätt'),
-          p_frequency: mode === 'count' ? Number(form.get('frequency')) : null,
-          p_weekdays: weekdays
-        }));
+        const count = mode === 'days'
+          ? await call(client.rpc('add_assigned_weekly_chores', { ...common, p_schedule: schedule }))
+          : await call(client.rpc('add_scheduled_weekly_chores', { ...common, p_assignees: assignees, p_frequency: Number(form.get('frequency')) }));
         await refresh();
-        window.showToast?.(`${count} syssla${count === 1 ? '' : 'or'} planerad${count === 1 ? '' : 'e'} för nästa vecka.`);
+        window.showToast?.(mode === 'days'
+          ? `${count} dag${count === 1 ? '' : 'ar'} fördelad${count === 1 ? '' : 'e'} på familjen.`
+          : `${count} syssla${count === 1 ? '' : 'or'} planerad${count === 1 ? '' : 'e'} för nästa vecka.`);
       } catch (error) {
-        const message = /add_scheduled_weekly_chores|schema cache|could not find the function/i.test(error.message || '')
-          ? 'Nästa veckas sysslor kräver databasuppdateringen 20261122_next_week_chore_planning.sql.'
+        const message = /add_assigned_weekly_chores|add_scheduled_weekly_chores|schema cache|could not find the function/i.test(error.message || '')
+          ? 'Kör databasuppdateringen 20261122162917_assign_weekly_chore_days.sql för att använda dagsfördelning.'
           : error.message;
         window.showToast?.(message);
       }
