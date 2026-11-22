@@ -471,6 +471,22 @@
       }).join('') || '<p class="admin-muted">Inga familjemedlemmar har lagts till ännu.</p>'}`;
       if (familyToday.dataset.remoteMarkup !== familyMarkup) { familyToday.dataset.remoteMarkup = familyMarkup; familyToday.innerHTML = familyMarkup; }
     }
+    const activityCard = document.querySelector('#view-root .activity-card');
+    if (activityCard) {
+      const recent = [...data.submissions].sort((a, b) => Date.parse(b.submitted_at) - Date.parse(a.submitted_at)).slice(0, 4);
+      const activityMarkup = `<div class="section-head"><h2>Senaste nytt</h2><span>${recent.length ? 'Familjen' : ''}</span></div>${recent.map((submission) => {
+        const member = data.members.find((item) => item.user_id === submission.user_id);
+        const person = member?.display_name || 'Familjemedlem';
+        const title = submission.chores?.title || 'Uppdrag';
+        const status = submission.status === 'approved' ? 'klarade uppdraget' : submission.status === 'rejected' ? 'behöver försöka igen med' : 'skickade in';
+        const detail = submission.status === 'approved' ? `Godkänd · +${Number(submission.xp_reward) || 0} XP` : submission.status === 'rejected' ? 'Nekad · kan skickas in igen' : 'Väntar på godkännande';
+        const submittedAt = new Date(submission.decided_at || submission.submitted_at);
+        const when = new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(submittedAt);
+        const face = submission.status === 'approved' ? '✓' : submission.status === 'rejected' ? '↻' : '◷';
+        return `<div class="activity-line"><div class="activity-face" aria-hidden="true">${face}</div><div class="activity-text"><b>${escHtml(person)}</b> ${status} ${escHtml(title)}<small>${detail} · ${when}</small></div></div>`;
+      }).join('') || '<p class="empty-note">Här visas familjens senaste godkännanden och inlämnade uppgifter.</p>'}`;
+      if (activityCard.dataset.remoteMarkup !== activityMarkup) { activityCard.dataset.remoteMarkup = activityMarkup; activityCard.innerHTML = activityMarkup; }
+    }
     const homeProgress = document.querySelector('.left-col .family-card');
     if (homeProgress) {
       const completed = data.weekProgress?.completed || 0;

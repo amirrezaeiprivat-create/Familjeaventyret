@@ -354,3 +354,72 @@ button{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focu
 
 .ranking-winners{margin-top:18px}.ranking-winners h2{font-size:17px;margin:0 0 11px}.ranking-winners>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.ranking-winners article{padding:16px;display:grid;gap:6px}.ranking-winners article>span{font-size:22px}.ranking-winners article small{font-size:11px;color:var(--muted)}.ranking-winners article b{font-size:14px;overflow-wrap:anywhere}
 @media(max-width:760px){.ranking-winners>div{grid-template-columns:1fr}.ranking-winners article{grid-template-columns:34px minmax(0,1fr);align-items:center;gap:3px 10px}.ranking-winners article>span{grid-row:1/3}.ranking-winners article b{font-size:13px}}
+
+/* Läsbarhet och tydligare arbetsflöden på alla skärmstorlekar. */
+:root{--body-copy:15px;--small-copy:13px}
+body{font-size:var(--body-copy);line-height:1.5}
+#view-root .eyebrow{font-size:11px;letter-spacing:.08em;color:color-mix(in srgb,var(--ink) 68%,var(--bg))}
+.nav-item{font-size:14px;min-height:44px}
+.nav-label{font-size:11px;color:color-mix(in srgb,var(--ink) 62%,var(--bg))}
+.breadcrumbs{font-size:13px}
+.section-head h2{font-size:16px}
+.link-button,.filter-tab,.filter-tab.active{font-size:13px}
+.quest-info b,.admin-list-row>b,.admin-list-copy b{font-size:14px}
+.quest-info span,.quest-status,.quest-reward,.empty-note,.admin-muted,.admin-heading p,.admin-list-copy small,.admin-list-row>span:not(.quest-icon),.member-line small,.member-line>b,.activity-text,.activity-text small{font-size:13px;line-height:1.5}
+.admin-muted,.admin-list-copy small,.admin-list-row>span:not(.quest-icon),.member-line small,.activity-text small{color:color-mix(in srgb,var(--ink) 68%,var(--bg))}
+.admin-quest-form label,.ranking-prize-form label{font-size:13px}
+.admin-quest-form input,.admin-quest-form select,.ranking-prize-form input{min-height:46px;font-size:15px}
+.admin-section{padding:20px}
+.admin-picker{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px}
+.admin-picker label{min-width:0}
+.admin-picker span{font-size:15px;min-height:48px;line-height:1.25;text-align:center}
+.admin-picker input:focus-visible+span{outline-offset:1px}
+.admin-metric small,.admin-metric span{font-size:13px;line-height:1.4}
+.admin-metric{min-height:112px}
+.approval-row button,.approval-row .approval-admin,.approval-row .rejection-reason{font-size:14px;min-height:44px}
+.full-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr))}
+.creature-card{padding:18px}
+.creature-card h3{font-size:17px}
+.creature-card p,.creature-xp-line,.creature-power-status{font-size:13px;line-height:1.5}
+.creature-art{min-height:170px}
+.ability-button{font-size:13px;min-height:44px;padding:10px 14px}
+.achievement small,.achievement b{font-size:12px;line-height:1.4}
+.ranking-winners article{min-width:0;border:1px solid var(--line);border-radius:16px;box-shadow:0 3px 10px rgba(40,50,40,.045)}
+.ranking-winners article small{font-size:13px;color:color-mix(in srgb,var(--ink) 70%,var(--bg))}
+.ranking-winners article b{font-size:16px;line-height:1.35}
+.rank-info small,.rank-score small,.ranking-intro,.prize-card p,.ranking-empty{font-size:14px;line-height:1.5}
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid color-mix(in srgb,var(--deep) 66%,white);outline-offset:3px}
+@media(max-width:760px){
+ #view-root{padding-top:22px;padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+ .admin-picker{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-section{padding:18px 16px}
+ .admin-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-metric:last-child{grid-column:1/-1}
+ .full-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+ .creature-card{display:grid;grid-template-columns:minmax(108px,34%) minmax(0,1fr);column-gap:14px;align-content:start}
+ .creature-art{grid-column:1;grid-row:1 / span 5;min-height:156px;height:100%;align-self:stretch}
+ .creature-card .creature-tag{left:auto;right:12px}
+ .creature-card h3{align-self:end;margin-top:8px}
+ .creature-card p{margin:5px 0}
+ .creature-xp-line,.creature-power-status{display:block}
+ .creature-bottom{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
+ .creature-bottom .ability-button{flex:0 0 auto}
+ .achievement-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .achievement{min-height:112px;padding:12px 8px}
+ .ranking-winners>div{grid-template-columns:minmax(0,1fr)}
+ .ranking-winners article{min-height:76px;padding:13px 15px}
+ .ranking-winners article b{font-size:15px}
+ .admin-list-row{gap:10px}
+ .admin-list-copy{flex-basis:100%}
+}
+@media(max-width:380px){
+ .creature-card{grid-template-columns:minmax(92px,32%) minmax(0,1fr);column-gap:10px;padding:12px}
+ .creature-art{min-height:140px}
+ .creature-card h3{font-size:15px}
+ .admin-picker span{font-size:14px;padding-inline:6px}
+ .admin-metric{padding:12px}
+}
+.level-chip,.admin-role-chip,.creature-tag,.rarity,.nav-count,.hero-season{font-size:11px;line-height:1.3}
+.profile-stats small,.player-meta small,.player-foot,.xp-label,.season-mini-copy small,.season-mini-copy span{font-size:12px;line-height:1.4}
+.season-mini-copy b,.sidebar-player b,.family-switch b{font-size:13px}
+.ranking-score-note{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--pale) 48%,var(--card));color:color-mix(in srgb,var(--ink) 78%,var(--bg));font-size:13px;line-height:1.5}
