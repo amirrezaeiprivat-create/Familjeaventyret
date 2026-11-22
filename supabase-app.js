@@ -339,7 +339,7 @@
     if (!existingMemberCard || memberCard.dataset.signature !== memberSignature) {
       memberCard.id = 'family-member-management';
       memberCard.className = 'card admin-section family-member-management';
-      memberCard.innerHTML = `<div class="section-head"><div><h2>Hantera familjemedlemmar</h2><p class="admin-muted">Ändra roller eller ta bort medlemmar från familjen.</p></div><span class="level-chip">${data.members.length} MEDLEMMAR</span></div><div class="family-member-list">${data.members.map((member) => `<div class="family-member-admin-row" data-family-user="${escHtml(member.user_id)}"><div class="family-member-admin-name"><b>${escHtml(member.display_name)}</b>${member.user_id === data.member.user_id ? '<small>Du</small>' : ''}</div><select data-member-role aria-label="Roll för ${escHtml(member.display_name)}"><option value="player" ${member.role === 'player' ? 'selected' : ''} ${member.role === 'admin' && adminCount <= 1 ? 'disabled' : ''}>Spelare</option><option value="admin" ${member.role === 'admin' ? 'selected' : ''} ${member.role === 'player' && adminCount >= 2 ? 'disabled' : ''}>Administratör</option></select><button class="filter-tab" type="button" data-save-member-role>Spara roll</button><button class="filter-tab admin-remove" type="button" data-remove-family-member ${(member.user_id === data.member.user_id || (member.role === 'admin' && adminCount <= 1)) ? 'disabled' : ''}>Ta bort</button></div>`).join('')}</div>`;
+      memberCard.innerHTML = `<div class="section-head"><div><h2>Hantera familjemedlemmar</h2><p class="admin-muted">Ändra roller eller ta bort medlemmar från familjen.</p></div><span class="level-chip">${data.members.length} MEDLEMMAR</span></div><div class="family-member-list">${data.members.map((member) => `<div class="family-member-admin-row" data-family-user="${escHtml(member.user_id)}"><div class="family-member-admin-name"><b>${escHtml(member.display_name)}</b>${member.user_id === data.member.user_id ? '<small>Du</small>' : ''}</div><select data-member-role aria-label="Roll för ${escHtml(member.display_name)}"><option value="player" ${member.role === 'player' ? 'selected' : ''} ${member.role === 'admin' && adminCount <= 1 ? 'disabled' : ''}>Spelare</option><option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Administratör</option></select><button class="filter-tab" type="button" data-save-member-role>Spara roll</button><button class="filter-tab admin-remove" type="button" data-remove-family-member ${(member.user_id === data.member.user_id || (member.role === 'admin' && adminCount <= 1)) ? 'disabled' : ''}>Ta bort</button></div>`).join('')}</div>`;
       memberCard.dataset.signature = memberSignature;
       if (!existingMemberCard) form.closest('.admin-section')?.before(memberCard);
     }
@@ -534,7 +534,7 @@
       const actions = document.createElement('section');
       actions.id = 'family-settings-card';
       actions.className = 'card family-card family-settings-card';
-      actions.innerHTML = `<div class="section-head"><div><h2>Familjeinställningar</h2><p>Lämna familjen eller hantera hela familjens äventyr.</p></div></div><div class="family-settings-actions"><button type="button" class="filter-tab family-leave-button" data-leave-family ${data.member.role === 'admin' && adminCount < 2 ? 'disabled' : ''}>Lämna familjen</button>${data.member.role === 'admin' ? '<button type="button" class="filter-tab family-delete-button" data-delete-family>Radera familjen</button>' : ''}</div>${data.member.role === 'admin' && adminCount < 2 ? '<small class="family-settings-note">Bjud först in en annan administratör. Familjen behöver minst en admin.</small>' : ''}`;
+      actions.innerHTML = `<div class="section-head"><div><h2>Familjeinställningar</h2><p>Lämna familjen eller hantera hela familjens äventyr.</p></div></div><div class="family-settings-actions"><button type="button" class="filter-tab family-leave-button" data-leave-family >Lämna familjen</button>${data.member.role === 'admin' ? '<button type="button" class="filter-tab family-delete-button" data-delete-family>Radera familjen</button>' : ''}</div>`;
       if (aboutCard) aboutCard.before(actions);
       else document.querySelector('#view-root .profile-layout')?.after(actions);
     }
@@ -737,11 +737,9 @@
       } catch (error) {
         const message = /admin_set_member_role|schema cache|could not find the function/i.test(error.message || '')
           ? 'Rollhanteringen saknas i databasen. Kör migrationen 20261118_family_management.sql i Supabase.'
-          : /at most two active administrators/i.test(error.message || '')
-            ? 'Familjen har redan två administratörer.'
-            : /only a family admin/i.test(error.message || '')
-              ? 'Bara en familjeadmin kan ändra roller.'
-              : error.message;
+          : /only a family admin/i.test(error.message || '')
+            ? 'Bara en familjeadmin kan ändra roller.'
+            : error.message;
         window.showToast?.(message);
       }
     }

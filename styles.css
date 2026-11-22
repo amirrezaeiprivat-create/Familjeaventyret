@@ -348,3 +348,6 @@ button{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focu
 @media(max-width:760px){.ranking-prize-form{grid-template-columns:minmax(0,1fr)}.ranking-prize-form button{grid-column:1;width:100%;min-height:44px}}
 .admin-picker:has([value="tools"]:checked) ~ #admin-ranking-prizes{display:block}
 #view-root:has(.admin-picker [value="prizes"]:checked) #admin-ranking-prizes{display:block!important}
+
+/* Prevent mobile browsers from auto-zooming when text fields receive focus. */
+@media(max-width:760px){input,select,textarea{font-size:16px!important}}
