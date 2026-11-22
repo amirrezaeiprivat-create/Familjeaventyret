@@ -481,3 +481,11 @@ body{font-size:var(--body-copy);line-height:1.5}
  .journey-progress{margin-top:9px;margin-bottom:10px}
  .journey-pending{margin-bottom:7px}
 }
+
+
+/* Startsida: samma tydliga förmågeknapp som på varelsekorten. */
+.companion-details .creature-power-status{display:block;margin-top:6px;text-align:left;min-height:0;font-size:10px;font-weight:700;color:#398854}
+.companion-details .creature-power-status.is-cooldown,.companion-details .creature-power-status.is-active,.companion-details .creature-power-status.is-consumed,.companion-details .creature-power-status.is-locked{color:#85877f}
+.home-ability-button{flex:0 0 auto;min-width:108px;max-width:130px;padding:10px 12px;border-radius:14px;font-size:11px;line-height:1.25;white-space:normal}
+.home-curse-action{flex:0 0 auto}
+@media(max-width:390px){.companion-showcase{gap:8px}.home-ability-button{min-width:94px;max-width:104px;padding:8px;font-size:9px}}
