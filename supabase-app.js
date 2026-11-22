@@ -136,7 +136,7 @@
     const state = window.gameState;
     if (!state) throw new Error('Spelstatusen kunde inte läsas in. Ladda om sidan.');
     const familyId = data.familyId;
-    const [family, members, plans, chores, submissions, creatures, creatureEffects, abilityRequests, chestCredits, familyChallenges] = await Promise.all([
+    const [family, members, plans, chores, submissions, creatures, creatureEffects, abilityRequests, chestCredits, familyChallenges, weeklyRewards] = await Promise.all([
       call(client.from('families').select('name').eq('id', familyId).single()),
       call(client.from('family_members').select('family_id,user_id,display_name,role,xp,tokens,shards,streak,is_active').eq('family_id', familyId).eq('is_active', true)),
       call(client.from('weekly_plans').select('*').eq('family_id', familyId).in('week_start', [getMonday(), getNextMonday()])),
@@ -146,8 +146,31 @@
       optionalRows(client.from('creature_effects').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).gt('uses_remaining', 0).order('created_at')),
       optionalRows(client.from('creature_ability_requests').select('*').eq('family_id', familyId).order('created_at', { ascending: false })),
       optionalRows(client.from('creature_chest_credits').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).is('redeemed_at', null).order('created_at')),
-      optionalRows(client.from('family_challenges').select('*').eq('family_id', familyId).in('status', ['active','complete']).order('starts_at', { ascending: false }))
+      optionalRows(client.from('family_challenges').select('*').eq('family_id', familyId).in('status', ['active','complete']).order('starts_at', { ascending: false })),
+      call(client.from('weekly_rewards').select('id').eq('family_id', familyId).eq('user_id', data.member.user_id).limit(1))
     ]);
+    const approved = submissions.filter(row => row.user_id === data.member.user_id &&
+      row.status === 'approved' && row.chores?.kind === 'weekly');
+    const dayNumbers = [...new Set(approved.map(row => Math.floor(Date.parse(row.decided_at) / 86400000)))]
+      .filter(Number.isFinite).sort((a, b) => a - b);
+    let run = 0;
+    let best = 0;
+    dayNumbers.forEach((day, index) => {
+      run = day === dayNumbers[index - 1] + 1 ? run + 1 : 1;
+      best = Math.max(best, run);
+    });
+    const now = new Date();
+    const startMonth = now.getMonth() - (now.getMonth() + 1) % 3;
+    const seasonStart = window.activeSeason?.key === 'christmas'
+      ? new Date(now.getFullYear(), 11, 18) : new Date(now.getFullYear(), startMonth, 1);
+    state.profileAwards = [
+      ['🌱', 'Första steget', 'Ett godkänt uppdrag', approved.length >= 1],
+      ['🔥', 'På gång!', 'Fem dagars svit', Math.max(best, members.find(m => m.user_id === data.member.user_id)?.streak || 0) >= 5],
+      ['🦊', 'Ny vän', 'Hitta en varelse', creatures.length > 0],
+      ['✨', 'Guldstjärna', 'Tio godkända uppdrag', approved.length >= 10],
+      ['👪', 'Laget först', 'Få veckans familjebelöning', weeklyRewards.length > 0],
+      ['🏆', window.activeSeason?.name || 'Säsongsäventyret', 'Ett godkänt uppdrag denna säsong', approved.some(row => Date.parse(row.decided_at) >= seasonStart.getTime())]
+    ];
     data.familyName = family.name;
     data.members = members;
     data.member = members.find((member) => member.user_id === data.member.user_id) || data.member;
