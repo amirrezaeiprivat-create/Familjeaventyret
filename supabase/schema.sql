@@ -230,6 +230,53 @@ begin
   return v_chore;
 end $$;
 
+create or replace function public.add_scheduled_weekly_chores(
+  p_plan_id uuid, p_title text, p_description text, p_xp integer, p_tokens integer,
+  p_assignees uuid[], p_difficulty text, p_frequency integer default null, p_weekdays integer[] default null
+)
+returns integer language plpgsql security definer set search_path=public,pg_temp
+as $$
+declare
+  v_plan public.weekly_plans%rowtype;
+  v_next_week date:=date_trunc('week',now() at time zone 'Europe/Stockholm')::date+7;
+  v_day integer; v_day_name text; v_index integer:=0; v_total integer; v_title text; v_chore uuid; v_member uuid;
+begin
+  if auth.uid() is null then raise exception 'Logga in för att fortsätta.'; end if;
+  select * into v_plan from public.weekly_plans where id=p_plan_id for update;
+  if not found or not public.app_is_family_admin(v_plan.family_id) then raise exception 'Veckoplanen hittades inte eller så saknas administratörsbehörighet.'; end if;
+  if v_plan.week_start<>v_next_week then raise exception 'Du kan bara planera sysslor för nästa vecka.'; end if;
+  if v_plan.status<>'open' then raise exception 'Planen för nästa vecka är stängd.'; end if;
+  if length(trim(coalesce(p_title,'')))<1 or length(trim(p_title))>85 then raise exception 'Ange ett sysslenamn med 1 till 85 tecken.'; end if;
+  if coalesce(array_length(p_assignees,1),0)=0 then raise exception 'Välj minst en familjemedlem.'; end if;
+  if p_difficulty not in ('Lätt','Mellan','Svår') then raise exception 'Ogiltig svårighetsgrad.'; end if;
+  if p_xp is null or p_xp<0 or p_xp>500 or p_tokens is null or p_tokens<0 or p_tokens>100 then raise exception 'Ogiltig XP- eller myntbelöning.'; end if;
+  foreach v_member in array p_assignees loop
+    if not exists(select 1 from public.family_members where family_id=v_plan.family_id and user_id=v_member and is_active) then raise exception 'Alla valda personer måste vara aktiva familjemedlemmar.'; end if;
+  end loop;
+  if p_weekdays is not null and cardinality(p_weekdays)>0 then
+    if p_frequency is not null then raise exception 'Välj antingen antal tillfällen eller veckodagar.'; end if;
+    if exists(select 1 from unnest(p_weekdays) as selected(day) where selected.day not between 1 and 7)
+       or cardinality(p_weekdays)<>(select count(distinct selected.day)::integer from unnest(p_weekdays) as selected(day)) then raise exception 'Välj giltiga veckodagar, en gång vardera.'; end if;
+    v_total:=cardinality(p_weekdays);
+    for v_day in select distinct selected.day from unnest(p_weekdays) as selected(day) order by selected.day loop
+      v_index:=v_index+1;
+      v_day_name:=case v_day when 1 then 'måndag' when 2 then 'tisdag' when 3 then 'onsdag' when 4 then 'torsdag' when 5 then 'fredag' when 6 then 'lördag' else 'söndag' end;
+      v_title:=trim(p_title)||' · '||v_day_name;
+      insert into public.chores(family_id,plan_id,title,description,difficulty,xp_reward,token_reward,created_by) values(v_plan.family_id,v_plan.id,v_title,coalesce(trim(p_description),''),p_difficulty,p_xp,p_tokens,auth.uid()) returning id into v_chore;
+      insert into public.chore_assignments(family_id,chore_id,user_id,assigned_by) select v_plan.family_id,v_chore,selected.user_id,auth.uid() from (select distinct unnest(p_assignees) as user_id) selected;
+    end loop;
+  else
+    if p_frequency is null or p_frequency not between 1 and 7 then raise exception 'Välj mellan 1 och 7 tillfällen per vecka.'; end if;
+    v_total:=p_frequency;
+    for v_index in 1..v_total loop
+      v_title:=case when v_total=1 then trim(p_title) else trim(p_title)||' · tillfälle '||v_index||'/'||v_total end;
+      insert into public.chores(family_id,plan_id,title,description,difficulty,xp_reward,token_reward,created_by) values(v_plan.family_id,v_plan.id,v_title,coalesce(trim(p_description),''),p_difficulty,p_xp,p_tokens,auth.uid()) returning id into v_chore;
+      insert into public.chore_assignments(family_id,chore_id,user_id,assigned_by) select v_plan.family_id,v_chore,selected.user_id,auth.uid() from (select distinct unnest(p_assignees) as user_id) selected;
+    end loop;
+  end if;
+  return v_total;
+end $$;
+
 create or replace function public.submit_chore(p_chore_id uuid)
 returns uuid language plpgsql security definer set search_path = public, pg_temp
 as $$
@@ -241,7 +288,7 @@ begin
   if not exists(select 1 from public.chore_assignments where chore_id=v_chore.id and user_id=auth.uid()) then raise exception 'This chore is not assigned to you'; end if;
   if v_chore.kind='weekly' then
     if exists(select 1 from public.chores where family_id=v_chore.family_id and kind='curse' and resolved_at is null) then raise exception 'Resolve active curses first'; end if;
-    if not exists(select 1 from public.weekly_plans where id=v_chore.plan_id and status='open') then raise exception 'Weekly plan is closed'; end if;
+    if not exists(select 1 from public.weekly_plans where id=v_chore.plan_id and family_id=v_chore.family_id and status='open' and week_start=date_trunc('week',now() at time zone 'Europe/Stockholm')::date) then raise exception 'Weekly plan is not active yet or is closed'; end if;
   end if;
   if exists(select 1 from public.quest_submissions where chore_id=v_chore.id and user_id=auth.uid() and status='approved') then raise exception 'This chore is already approved'; end if;
   insert into public.quest_submissions(family_id,chore_id,user_id,xp_reward,token_reward)
@@ -391,8 +438,8 @@ revoke all on public.families,public.family_members,public.family_invites,public
 grant select on public.families,public.family_members,public.family_invites,public.weekly_plans,public.chores,public.chore_assignments,public.quest_submissions,public.weekly_rewards,public.notifications to authenticated;
 revoke all on public.creature_inventory,public.creature_effects from anon,authenticated;
 grant select on public.creature_inventory,public.creature_effects to authenticated;
-revoke all on function public.app_is_family_member(uuid),public.app_is_family_admin(uuid),public.create_family(text,text),public.create_family_invite(uuid,text),public.join_family(text,text),public.create_weekly_plan(uuid,date),public.add_weekly_chore(uuid,text,text,integer,integer,uuid[],text),public.submit_chore(uuid),public.decide_quest_submission(uuid,text,text),public.close_weekly_plan(uuid) from public,anon;
-grant execute on function public.app_is_family_member(uuid),public.app_is_family_admin(uuid),public.create_family(text,text),public.create_family_invite(uuid,text),public.join_family(text,text),public.create_weekly_plan(uuid,date),public.add_weekly_chore(uuid,text,text,integer,integer,uuid[],text),public.submit_chore(uuid),public.decide_quest_submission(uuid,text,text),public.close_weekly_plan(uuid) to authenticated;
+revoke all on function public.app_is_family_member(uuid),public.app_is_family_admin(uuid),public.create_family(text,text),public.create_family_invite(uuid,text),public.join_family(text,text),public.create_weekly_plan(uuid,date),public.add_weekly_chore(uuid,text,text,integer,integer,uuid[],text),public.add_scheduled_weekly_chores(uuid,text,text,integer,integer,uuid[],text,integer,integer[]),public.submit_chore(uuid),public.decide_quest_submission(uuid,text,text),public.close_weekly_plan(uuid) from public,anon;
+grant execute on function public.app_is_family_member(uuid),public.app_is_family_admin(uuid),public.create_family(text,text),public.create_family_invite(uuid,text),public.join_family(text,text),public.create_weekly_plan(uuid,date),public.add_weekly_chore(uuid,text,text,integer,integer,uuid[],text),public.add_scheduled_weekly_chores(uuid,text,text,integer,integer,uuid[],text,integer,integer[]),public.submit_chore(uuid),public.decide_quest_submission(uuid,text,text),public.close_weekly_plan(uuid) to authenticated;
 revoke all on function public.leave_family(uuid),public.admin_set_member_role(uuid,uuid,text),public.admin_remove_family_member(uuid,uuid),public.admin_delete_family(uuid) from public,anon;
 grant execute on function public.leave_family(uuid),public.admin_set_member_role(uuid,uuid,text),public.admin_remove_family_member(uuid,uuid),public.admin_delete_family(uuid) to authenticated;
 
