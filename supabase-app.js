@@ -396,22 +396,30 @@
     const profileDescription = document.querySelector('.profile-card>p');
     const profileText = `Äventyrare · ${data.member.role === 'admin' ? 'Administratör' : 'Medlem'} i ${familyName}`;
     if (profileDescription && profileDescription.textContent !== profileText) profileDescription.textContent = profileText;
+    const xpPerLevel = 1000;
+    const totalXp = Math.max(0, Number(data.member.xp) || 0);
+    const level = Math.floor(totalXp / xpPerLevel) + 1;
+    const levelXp = totalXp % xpPerLevel;
+    for (const card of document.querySelectorAll('.profile-card, .right-col .player-card')) {
+      const chip = card.querySelector('.level-chip');
+      const label = card.querySelector('.xp-label b');
+      const bar = card.querySelector('.progress span');
+      const levelText = card.classList.contains('profile-card') ? `NIVÅ ${level} · ÄVENTYRARE` : `NIVÅ ${level}`;
+      const progressText = `${levelXp} / ${xpPerLevel} XP`;
+      if (chip && chip.textContent !== levelText) chip.textContent = levelText;
+      if (label && label.textContent !== progressText) label.textContent = progressText;
+      if (bar) bar.style.width = `${levelXp / xpPerLevel * 100}%`;
+    }
     const playerCard = document.querySelector('.right-col .player-card');
     if (playerCard) {
       const playerName = playerCard.querySelector('.player-meta b');
       if (playerName && playerName.textContent !== name) playerName.textContent = name;
-      const level = Math.floor(Math.max(0, data.member.xp) / 1000) + 1;
-      const levelChip = playerCard.querySelector('.level-chip');
-      if (levelChip && levelChip.textContent !== `NIVÅ ${level}`) levelChip.textContent = `NIVÅ ${level}`;
       const rank = [...data.members].sort((a, b) => b.xp - a.xp).findIndex((member) => member.user_id === data.member.user_id) + 1;
       const rankText = playerCard.querySelector('.player-foot b');
       if (rankText && rankText.textContent !== `#${rank} av ${data.members.length}`) rankText.textContent = `#${rank} av ${data.members.length}`;
       const rankLabel = playerCard.querySelector('.player-foot span');
       if (rankLabel && rankLabel.textContent !== `👥 Familjerank · ${name}`) rankLabel.textContent = `👥 Familjerank · ${name}`;
-      const progressLabel = playerCard.querySelector('.xp-label b');
-      if (progressLabel && progressLabel.textContent !== `${data.member.xp} / ${(level * 1000)} XP`) progressLabel.textContent = `${data.member.xp} / ${(level * 1000)} XP`;
-      const xpBar = playerCard.querySelector('.progress span');
-      if (xpBar) xpBar.style.width = `${Math.min(100, Math.round((data.member.xp % 1000) / 10))}%`;
+
     }
     const familyToday = document.querySelector('.right-col .family-card');
     if (familyToday) {
