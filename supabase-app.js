@@ -525,10 +525,8 @@
         const title = submission.chores?.title || 'Uppdrag';
         const status = submission.status === 'approved' ? 'klarade uppdraget' : submission.status === 'rejected' ? 'behöver försöka igen med' : 'skickade in';
         const detail = submission.status === 'approved' ? `Godkänd · +${Number(submission.xp_reward) || 0} XP` : submission.status === 'rejected' ? 'Nekad · kan skickas in igen' : 'Väntar på godkännande';
-        const submittedAt = new Date(submission.decided_at || submission.submitted_at);
-        const when = new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(submittedAt);
         const face = submission.status === 'approved' ? '✓' : submission.status === 'rejected' ? '↻' : '◷';
-        return `<div class="activity-line"><div class="activity-face" aria-hidden="true">${face}</div><div class="activity-text"><b>${escHtml(person)}</b> ${status} ${escHtml(title)}<small>${detail} · ${when}</small></div></div>`;
+        return `<div class="activity-line"><div class="activity-face" aria-hidden="true">${face}</div><div class="activity-text"><b>${escHtml(person)}</b> ${status} ${escHtml(title)}<small>${detail}</small></div></div>`;
       }).join('') || '<p class="empty-note">Här visas familjens senaste godkännanden och inlämnade uppgifter.</p>'}`;
       if (activityCard.dataset.remoteMarkup !== activityMarkup) { activityCard.dataset.remoteMarkup = activityMarkup; activityCard.innerHTML = activityMarkup; }
     }
@@ -537,24 +535,12 @@
       const completed = data.weekProgress?.completed || 0;
       const assigned = data.weekProgress?.assigned || 0;
       const percent = assigned ? Math.round(completed / assigned * 100) : 0;
-      const summary = homeProgress.querySelector('.section-head span:first-child');
-      const summaryMarkup = assigned ? `Familjen har gjort <b>${completed} av ${assigned} sysslor</b> den här veckan` : 'Inga sysslor har tilldelats den här veckan ännu.';
+      const summary = homeProgress.querySelector('.family-progress-summary');
+      const summaryMarkup = assigned ? `<b>${completed} av ${assigned}</b> sysslor godkända den här veckan` : 'Inga sysslor tilldelade ännu.';
       if (summary && summary.innerHTML !== summaryMarkup) summary.innerHTML = summaryMarkup;
-      const badge = homeProgress.querySelector('.section-head span:last-child');
-      if (badge && badge.textContent !== `${percent}%`) badge.textContent = `${percent}%`;
       const bar = homeProgress.querySelector('.progress span');
       if (bar) bar.style.width = `${percent}%`;
-      const footer = homeProgress.querySelector('div[style*="display:flex"] span');
-      const pending = data.memberProgress.reduce((sum, member) => sum + member.pending, 0);
-      const footerText = assigned && completed === assigned ? 'Alla veckosysslor är godkända — diamantkistor väntar!' : pending ? `${pending} sysslor väntar på godkännande.` : 'Godkända sysslor räknas in i familjens veckomål.';
-      if (footer && footer.textContent !== footerText) footer.textContent = footerText;
     }
-    const heroStats = document.querySelector('.hero-stats');
-    const memberStat = heroStats?.querySelectorAll('.hero-stat')[2];
-    if (memberStat && memberStat.textContent !== `${data.members.length} medlemmar`) memberStat.innerHTML = `<b>${data.members.length}</b> medlemmar`;
-    const seasonStat = heroStats?.querySelectorAll('.hero-stat')[1];
-    const weekPercent = data.weekProgress?.assigned ? Math.round(data.weekProgress.completed / data.weekProgress.assigned * 100) : 0;
-    if (seasonStat && seasonStat.textContent !== `${weekPercent}% av veckans sysslor`) seasonStat.innerHTML = `<b>${weekPercent}%</b> av veckans sysslor`;
     const badge = document.querySelector('.nav-count');
     if (badge) { badge.textContent = data.actionableCount ? String(data.actionableCount) : ''; badge.hidden = !data.actionableCount; }
     const weeklyChallenge = document.querySelector('#view-root .all-quests + .family-card');
