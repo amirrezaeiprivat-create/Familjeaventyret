@@ -489,3 +489,23 @@ body{font-size:var(--body-copy);line-height:1.5}
 .home-ability-button{flex:0 0 auto;min-width:108px;max-width:130px;padding:10px 12px;border-radius:14px;font-size:11px;line-height:1.25;white-space:normal}
 .home-curse-action{flex:0 0 auto}
 @media(max-width:390px){.companion-showcase{gap:8px}.home-ability-button{min-width:94px;max-width:104px;padding:8px;font-size:9px}}
+
+
+/* Fördela återkommande sysslor per dag utan att tränga ihop mobilformuläret. */
+.next-week-quest-form [data-count-assignees][hidden],.next-week-quest-form [data-weekday-choice][hidden]{display:none!important}
+.next-week-quest-form .next-week-schedule{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:10px 12px}
+.next-week-quest-form .next-week-schedule>legend,.next-week-schedule .schedule-help,.next-week-schedule .frequency-choice,.next-week-schedule .weekday-assignment-list{grid-column:1/-1}
+.next-week-quest-form .schedule-help{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
+.next-week-quest-form .next-week-schedule>label:not(.frequency-choice){display:flex;align-items:center;min-height:46px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:13px;font-weight:750}
+.next-week-quest-form .next-week-schedule input[type=radio],.next-week-quest-form .next-week-assignees input[type=checkbox],.weekday-assignment-day input{width:18px;height:18px;flex:0 0 auto}
+.weekday-assignment-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+.weekday-assignment-list .schedule-help,.weekday-assignment-summary{grid-column:1/-1}
+.weekday-assignment{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,1.1fr);align-items:center;gap:8px;min-width:0;min-height:54px;padding:7px 9px;border:1px solid var(--line);border-radius:13px;background:var(--card)}
+.weekday-assignment.is-selected{border-color:var(--green);background:color-mix(in srgb,var(--green) 8%,var(--card))}
+.weekday-assignment-day{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px;font-weight:800}
+.weekday-assignment select{width:100%;min-width:0;min-height:40px;padding:7px 8px;border:1px solid var(--line);border-radius:10px;background:var(--card);font:inherit;font-size:12px}
+.weekday-assignment select:disabled{opacity:.45}
+.weekday-assignment-summary{min-height:24px;padding:6px 1px 0;color:var(--deep);font-size:12px;font-weight:800}
+.quest-row.is-scheduled{opacity:.84}
+.quest-status.schedule-hint{color:var(--deep);font-weight:750}
+@media(max-width:760px){.next-week-quest-form .next-week-schedule{grid-template-columns:minmax(0,1fr);gap:8px}.next-week-quest-form .next-week-schedule>label:not(.frequency-choice){grid-column:1;min-height:46px}.weekday-assignment-list{grid-template-columns:minmax(0,1fr)}.weekday-assignment{min-height:54px}.weekday-assignment select{font-size:16px;min-height:44px}.next-week-quest-form .schedule-help{font-size:13px}.weekday-assignment-summary{font-size:13px}}
