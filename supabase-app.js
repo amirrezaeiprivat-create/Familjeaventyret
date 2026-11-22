@@ -7,7 +7,7 @@
     return;
   }
 
-  const data = { familyId: null, member: null, members: [], chores: [], allChores: [], submissions: [], creatures: [], familyCreatures: [], creatureEffects: [], abilityRequests: [], chestCredits: [], familyChallenges: [], plan: null, nextPlan: null, nextWeekChores: [] };
+  const data = { familyId: null, member: null, members: [], chores: [], allChores: [], submissions: [], creatures: [], familyCreatures: [], creatureEffects: [], abilityRequests: [], chestCredits: [], familyChallenges: [], plan: null, nextPlan: null, nextWeekChores: [], choreBankItems: [] };
   window.remoteFamily = data;
   window.demoSandbox = { active: false, snapshot: null, workingState: null };
   const escHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -111,6 +111,7 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'family_members', filter: `family_id=eq.${data.familyId}` }, () => bootstrapFamily().catch(errorMessage))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quest_submissions', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chores', filter: `family_id=eq.${data.familyId}` }, () => refresh())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chore_bank_items', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_inventory', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_effects', filter: `family_id=eq.${data.familyId}` }, () => refresh())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'creature_ability_requests', filter: `family_id=eq.${data.familyId}` }, () => refresh())
@@ -139,11 +140,12 @@
     const state = window.gameState;
     if (!state) throw new Error('Spelstatusen kunde inte läsas in. Ladda om sidan.');
     const familyId = data.familyId;
-    const [family, members, plans, chores, submissions, creatures, creatureEffects, abilityRequests, chestCredits, familyChallenges, weeklyRewards, prizeRows] = await Promise.all([
+    const [family, members, plans, chores, bankItems, submissions, creatures, creatureEffects, abilityRequests, chestCredits, familyChallenges, weeklyRewards, prizeRows] = await Promise.all([
       call(client.from('families').select('name').eq('id', familyId).single()),
       call(client.from('family_members').select('family_id,user_id,display_name,role,xp,tokens,shards,streak,is_active').eq('family_id', familyId).eq('is_active', true)),
       call(client.from('weekly_plans').select('*').eq('family_id', familyId).in('week_start', [getMonday(), getNextMonday()])),
       call(client.from('chores').select('*,chore_assignments(user_id,deadline_at,scheduled_for),quest_submissions(*)').eq('family_id', familyId).eq('is_active', true)),
+      optionalRows(client.from('chore_bank_items').select('*').eq('family_id', familyId).order('created_at', { ascending: false })),
       call(client.from('quest_submissions').select('*,chores(title,kind,xp_reward,token_reward)').eq('family_id', familyId).order('submitted_at', { ascending: false })),
       optionalRows(client.from('creature_inventory').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).order('acquired_at')),
       optionalRows(client.from('creature_effects').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).gt('uses_remaining', 0).order('created_at')),
@@ -194,6 +196,7 @@
     state.creatures = data.creatures.map((creature) => { const definition = creatureDefinition(creature.creature_name); return { id: creature.id, catalogId: creature.creature_id, name: creature.creature_name, rarity: creature.rarity.toUpperCase(), rarityKey: creature.rarity, level: creature.level, creatureXp: creature.creature_xp, isCursed: creature.is_cursed, consumedAt: creature.consumed_at, cooldownUntil: creature.cooldown_until ? new Date(creature.cooldown_until).getTime() : null, ready: !creature.consumed_at && (!creature.cooldown_until || new Date(creature.cooldown_until).getTime() <= Date.now()), ability: definition?.ability || '', abilityKey: definition?.abilityKey || '', minLevel: definition?.minLevel || 1, visualTheme: definition?.visualTheme || '' }; });
     const allChores = chores;
     data.allChores = allChores;
+    data.choreBankItems = bankItems;
     data.submissions = submissions;
     if (data.member.role === 'admin' && !data.plan) {
       const planId = await call(client.rpc('create_weekly_plan', { p_family_id: familyId, p_week_start: getMonday() }));
@@ -318,6 +321,20 @@
   function decorateAdminForm() {
     const form = document.getElementById('admin-create-quest');
     if (!form) return;
+    if (data.member.role === 'admin' && !document.getElementById('admin-chore-bank')) {
+      const bankCard = document.createElement('section');
+      bankCard.id = 'admin-chore-bank';
+      bankCard.className = 'card admin-section admin-chore-bank';
+      bankCard.innerHTML = '<div class="section-head"><div><div class="eyebrow">EXTRA ÄVENTYR</div><h2>Sysselbanken</h2><p class="admin-muted">Skapa fristående extrasysslor som familjen kan plocka på sig. Belöningen delas ut efter vanligt admin-godkännande.</p></div><span class="level-chip">EXTRA XP + MYNT</span></div><form id="admin-create-bank-chore" class="admin-quest-form bank-chore-form"><label>Sysslans namn<input name="title" required maxlength="85" placeholder="Till exempel: Vattna blommorna"></label><label>Beskrivning<input name="description" maxlength="300" placeholder="Kort instruktion"></label><label>XP-belöning<input name="xp" type="number" min="0" max="500" value="15" required></label><label>Myntbelöning<input name="tokens" type="number" min="0" max="100" value="3" required></label><label>Svårighetsgrad<select name="difficulty"><option value="Lätt">Lätt</option><option value="Mellan">Mellan</option><option value="Svår">Svår</option></select></label><button class="primary-button" type="submit">＋ Lägg i Sysselbanken</button></form><div class="bank-admin-list"></div>';
+      form.closest('.admin-section')?.after(bankCard);
+    }
+    const bankList = document.querySelector('#admin-chore-bank .bank-admin-list');
+    if (bankList) {
+      const memberNames = new Map(data.members.map((member) => [member.user_id, member.display_name]));
+      const items = data.choreBankItems || [];
+      const bankMarkup = items.length ? items.map((item) => `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(item.title)}</b><small>${escHtml(item.difficulty)} · ${item.xp_reward} XP · ${item.token_reward} mynt${item.claimed_at ? ` · Tagen av ${escHtml(memberNames.get(item.claimed_by) || 'familjemedlem')}` : ' · Tillgänglig'}</small>${item.description ? `<small>${escHtml(item.description)}</small>` : ''}</div><span class="level-chip">${item.claimed_at ? 'TILLDELAD' : 'LEDIG'}</span></div>`).join('') : '<p class="admin-muted">Banken är tom än. Lägg till en syssla så kan familjen plocka på sig den.</p>';
+      if (bankList.dataset.signature !== bankMarkup) { bankList.innerHTML = bankMarkup; bankList.dataset.signature = bankMarkup; }
+    }
     if (data.member.role === 'admin') {
       let sandboxCard = document.getElementById('admin-sandbox-entry');
       if (!sandboxCard) { sandboxCard = document.createElement('section'); sandboxCard.id = 'admin-sandbox-entry'; sandboxCard.className = 'card admin-section sandbox-entry-card'; sandboxCard.innerHTML = '<div><span class="eyebrow">RISKFRI TESTYTA</span><h2>Testa utan risk</h2><p class="admin-muted">Öppna en separat kopia av familjeäventyret med obegränsat antal mynt. Inget du gör sparas på familjekontot.</p></div><button type="button" class="primary-button" data-demo-start>Starta demoläge</button>'; form.closest('.admin-section')?.before(sandboxCard); }
@@ -664,6 +681,22 @@
     const demoExit = event.target.closest('[data-demo-exit]');
     if (demoExit && window.demoSandbox.active) { event.preventDefault(); event.stopImmediatePropagation(); await stopDemoMode(); return; }
     if (window.demoSandbox.active) return;
+    const claimBankChore = event.target.closest('[data-claim-bank-chore]');
+    if (claimBankChore && data.familyId && data.member) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      claimBankChore.disabled = true;
+      try {
+        await call(client.rpc('claim_chore_bank_item', { p_item_id: claimBankChore.dataset.claimBankChore }));
+        await refresh(); window.showToast?.('Extrasysslan är din! Den finns nu bland dina uppdrag.');
+      } catch (error) {
+        const message = /no open weekly plan/i.test(error.message || '') ? 'Det finns ingen öppen uppdragsvecka just nu.'
+          : /already claimed|not available/i.test(error.message || '') ? 'Den extrasysslan har redan plockats av någon annan.'
+          : /resolve active curses first/i.test(error.message || '') ? 'Lös först familjens aktiva förbannelseuppgifter.'
+          : error.message || 'Extrasysslan kunde inte tilldelas.';
+        window.showToast?.(message); claimBankChore.disabled = false;
+      }
+      return;
+    }
     const bell = event.target.closest('.notification-button');
     if (bell && data.member && data.familyId) {
       event.stopImmediatePropagation();
@@ -968,6 +1001,24 @@
   });
     document.addEventListener('submit', async (event) => {
     if (window.demoSandbox.active) return;
+    if (event.target.id === 'admin-create-bank-chore' && data.familyId) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (data.member.role !== 'admin') return;
+      const values = new FormData(event.target);
+      const title = String(values.get('title') || '').trim();
+      const description = String(values.get('description') || '').trim();
+      const xp = Number(values.get('xp'));
+      const tokens = Number(values.get('tokens'));
+      const difficulty = String(values.get('difficulty') || 'Lätt');
+      const button = event.submitter; if (button) button.disabled = true;
+      try {
+        await call(client.rpc('admin_create_chore_bank_item', { p_family_id: data.familyId, p_title: title, p_description: description, p_xp: xp, p_tokens: tokens, p_difficulty: difficulty }));
+        event.target.reset(); event.target.elements.xp.value = '15'; event.target.elements.tokens.value = '3';
+        await refresh(); window.showToast?.('Extrasysslan lades i Sysselbanken.');
+      } catch (error) { window.showToast?.(error.message || 'Extrasysslan kunde inte sparas.'); }
+      finally { if (button) button.disabled = false; }
+      return;
+    }
     if (event.target.id === 'admin-prizes-form' && data.familyId) {
       event.preventDefault(); event.stopImmediatePropagation();
       if (data.member.role !== 'admin') return;

@@ -309,6 +309,7 @@ button{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focu
 .admin-picker input:focus-visible + span { outline: 3px solid var(--green); outline-offset: 2px }
 #view-root:not(:has(#admin-next-week-card)) [data-area="next"],
 #view-root:not(:has(#family-member-management)) [data-area="family"] { display: none }
+#view-root:not(:has(#admin-chore-bank)) [data-area="bank"] { display: none }
 .admin-picker:has(:checked) ~ .admin-section,
 .admin-picker:not(:has([value="inbox"]:checked)) ~ .admin-metrics { display: none }
 .admin-picker:has([value="inbox"]:checked) ~ :is(.admin-inbox,.creature-ability-requests),
@@ -317,6 +318,7 @@ button{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focu
 .admin-picker:has([value="family"]:checked) ~ :is(.family-member-management,.invite-family-card),
 .admin-picker:has([value="creatures"]:checked) ~ :is(#admin-family-creatures,.admin-creature-section),
 .admin-picker:has([value="tools"]:checked) ~ :is(.admin-self-coins,.sandbox-entry-card) { display: block }
+.admin-picker:has([value="bank"]:checked) ~ #admin-chore-bank { display: block }
 .admin-section .admin-quest-form { grid-template-columns: repeat(6,minmax(0,1fr)) }
 .admin-section .admin-quest-form > label { grid-column: span 2; min-width: 0; font-size: 13px }
 .admin-section .admin-quest-form > label:nth-child(-n+2) { grid-column: span 3 }
@@ -548,3 +550,6 @@ body{font-size:var(--body-copy);line-height:1.5}
  .planned-chore-group .planned-chore-schedule{font-size:12px}
 }
 
+
+.chore-bank-card{margin-top:15px;padding:22px}.chore-bank-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:15px}.chore-bank-heading h2{font-size:22px;margin:5px 0}.chore-bank-heading p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}.chore-bank-mark{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:14px;background:var(--pale);color:var(--deep);font-size:24px;font-weight:800}.chore-bank-list{display:grid;gap:10px}.chore-bank-offer{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:13px;padding:15px;border:1px solid var(--line);border-radius:17px;background:color-mix(in srgb,var(--pale) 32%,var(--card))}.chore-bank-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:#fff2d8;color:#c58c27;font-size:21px}.chore-bank-copy{display:grid;gap:4px;min-width:0}.chore-bank-copy b{font-size:15px}.chore-bank-copy small{color:var(--muted);font-size:12px}.chore-bank-copy span{color:var(--deep);font-size:12px;font-weight:800}.chore-bank-offer .primary-button{min-height:42px;white-space:nowrap}.chore-bank-empty{display:grid;justify-items:center;gap:6px;padding:26px 16px;border:1px dashed var(--line);border-radius:16px;text-align:center;color:var(--muted)}.chore-bank-empty>span{font-size:25px}.chore-bank-empty b{color:var(--ink);font-size:14px}.chore-bank-empty small{font-size:12px}.bank-chore-form{margin-bottom:16px}.admin-picker:has([value="bank"]:checked) ~ #admin-chore-bank{display:block!important}
+@media(max-width:760px){.chore-bank-card{padding:18px 15px}.chore-bank-heading{gap:10px}.chore-bank-heading h2{font-size:20px}.chore-bank-offer{grid-template-columns:36px minmax(0,1fr);gap:10px;padding:13px}.chore-bank-offer>.primary-button{grid-column:2;justify-self:start;min-height:42px}.chore-bank-copy b{font-size:14px}.chore-bank-empty{padding:22px 12px}}
