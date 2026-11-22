@@ -219,7 +219,7 @@
     state.tokens = data.member.tokens;
     state.shards = data.member.shards;
     state.streak = data.member.streak;
-    const mapped = submissions.map((s) => ({ id: s.id, questId: s.chore_id, questTitle: s.chores?.title || 'Uppdrag', submittedBy: members.find((m) => m.user_id === s.user_id)?.display_name || 'Familjemedlem', userId: s.user_id, kind: s.chores?.kind || 'weekly', submittedAt: new Date(s.submitted_at).getTime(), status: s.status, xp: s.xp_reward, tokens: s.token_reward, reason: s.rejection_reason }));
+    const mapped = submissions.map((s) => ({ id: s.id, questId: s.chore_id, questTitle: s.chores?.title || 'Uppdrag', submittedBy: members.find((m) => m.user_id === s.user_id)?.display_name || 'Familjemedlem', userId: s.user_id, kind: s.chores?.kind || 'weekly', submittedAt: new Date(s.submitted_at).getTime(), decidedAt: s.decided_at ? new Date(s.decided_at).getTime() : null, status: s.status, xp: s.xp_reward, tokens: s.token_reward, reason: s.rejection_reason }));
     state.questSubmissions = mapped;
     state.completed = submissions.filter((s) => s.status === 'approved' && s.chores?.kind === 'weekly' && s.user_id === data.member.user_id).map((s) => s.chore_id);
     state.customQuests = data.chores.filter((c) => c.kind === 'weekly').map((c) => ({ id: c.id, title: c.title, detail: c.description, icon: 'dish', color: 'green', xp: c.xp_reward, tokens: c.token_reward, difficulty: c.difficulty || 'Lätt' }));
