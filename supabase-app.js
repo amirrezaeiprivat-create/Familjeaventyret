@@ -38,7 +38,7 @@
       const chestArt = chestIllustration(button.dataset.chest, 100);
       const body = result.is_cursed
         ? `<div class="curse-reveal"><span class="curse-reveal-word">FÖRBANNELSE!</span><div class="modal-creature">${art}</div><span class="rarity cursed-rarity">FÖRBANNELSE</span><h2>${escHtml(result.creature_name)} har vaknat…</h2><p>${escHtml(result.curse_task || '')}</p><p class="curse-modal-note">Deadline ${result.deadline_hours} timmar · Vanliga uppdrag låses tills förbannelsen godkänts.</p><button class="primary-button" data-close>Jag tar mig an det</button></div>`
-        : `<span class="modal-chest">${chestArt}</span><div class="eyebrow">KISTAN ÄR ÖPPNAD!</div><span class="modal-creature">${art}</span><span class="rarity">${escHtml(creature?.label || result.rarity)}</span><h2>${result.is_duplicate ? 'En vän skickar en hälsning!' : `Möt ${escHtml(result.creature_name)}!`}</h2><p>${result.is_duplicate ? `Du har redan ${escHtml(result.creature_name)}. Du fick ${result.shards_awarded} skärvor.` : escHtml(creature?.description || 'En ny vän har hittat hem!')}</p><button class="primary-button" data-close>Härligt!</button>`;
+        : `<span class="modal-chest">${chestArt}</span><div class="eyebrow">KISTAN ÄR ÖPPNAD!</div><span class="modal-creature">${art}</span><span class="rarity">${escHtml(creature?.label || result.rarity)}</span><h2>${result.is_duplicate ? 'En vän skickar en hälsning!' : `Möt ${escHtml(result.creature_name)}!`}</h2><p>${result.is_duplicate ? `Du har redan ${escHtml(result.creature_name)}. Du fick ${result.tokens_awarded} mynt.` : escHtml(creature?.description || 'En ny vän har hittat hem!')}</p><button class="primary-button" data-close>Härligt!</button>`;
       window.openModal?.(`<button class="modal-close" data-close aria-label="Stäng">×</button>${body}`);
     } catch (error) {
       if (/not enough coins|unknown chest|sign in|membership|required/i.test(error.message || '')) sessionStorage.removeItem(keyName);
@@ -84,7 +84,7 @@
     if (window.demoSandbox.active) return;
     const user = (await call(client.auth.getUser())).user;
     if (!user) return loginForm();
-    const memberships = await call(client.from('family_members').select('family_id,user_id,display_name,role,xp,tokens,shards,streak,is_active').eq('user_id', user.id).eq('is_active', true));
+    const memberships = await call(client.from('family_members').select('family_id,user_id,display_name,role,xp,tokens,streak,is_active').eq('user_id', user.id).eq('is_active', true));
     if (!memberships.length) return familyGate();
     data.member = memberships[0];
     data.familyId = data.member.family_id;
@@ -99,7 +99,7 @@
     window.gameState.role = data.member.role;
     window.gameState.xp = data.member.xp;
     window.gameState.tokens = data.member.tokens;
-    window.gameState.shards = data.member.shards;
+    window.gameState.shards = 0;
     window.gameState.streak = data.member.streak;
     window.renderGame?.();
     decorateAdminForm();
@@ -217,7 +217,7 @@
     state.role = data.member.role;
     state.xp = data.member.xp;
     state.tokens = data.member.tokens;
-    state.shards = data.member.shards;
+    state.shards = 0;
     state.streak = data.member.streak;
     const mapped = submissions.map((s) => ({ id: s.id, questId: s.chore_id, questTitle: s.chores?.title || 'Uppdrag', submittedBy: members.find((m) => m.user_id === s.user_id)?.display_name || 'Familjemedlem', userId: s.user_id, kind: s.chores?.kind || 'weekly', submittedAt: new Date(s.submitted_at).getTime(), decidedAt: s.decided_at ? new Date(s.decided_at).getTime() : null, status: s.status, xp: s.xp_reward, tokens: s.token_reward, reason: s.rejection_reason }));
     state.questSubmissions = mapped;
@@ -405,7 +405,7 @@
     const name = data.member.display_name;
     const familyName = data.familyName || 'Familjen Rezaei';
     const chestNote = document.querySelector('#view-root .shop-card>p:last-child');
-    const syncedChestNote = 'Mynt, skärvor, kistor och varelser sparas i familjens gemensamma samling.';
+    const syncedChestNote = 'Mynt, kistor och varelser sparas i familjens gemensamma samling.';
     if (chestNote && chestNote.textContent !== syncedChestNote) chestNote.textContent = syncedChestNote;
     const shopCard = document.querySelector('#view-root .shop-card');
     if (shopCard) {
