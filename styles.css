@@ -526,3 +526,25 @@ body{font-size:var(--body-copy);line-height:1.5}
 .planned-chore-note{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
 .planned-chore-edit .primary-button{width:100%;min-height:48px}
 @media(max-width:480px){.planned-chore-edit h2{font-size:21px}.planned-chore-rewards{grid-template-columns:1fr}.planned-chore-assignees{grid-template-columns:1fr}.planned-chore-edit :is(input,select,textarea){font-size:16px}}
+
+/* En återkommande syssla visas samlad, med dagarnas ansvariga kvar som tydlig översikt. */
+.planned-chore-group{align-items:center}
+.planned-chore-group .admin-list-copy{min-width:0}
+.planned-chore-group .planned-chore-schedule{margin-top:3px;color:var(--deep);font-weight:750;line-height:1.5}
+.planned-chore-group-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.planned-chore-group-actions .filter-tab{min-height:40px}
+.planned-chore-group-actions .filter-tab:disabled{opacity:.48;cursor:not-allowed}
+.planned-group-mode{display:grid;gap:8px;margin:0;padding:12px;border:1px solid var(--line);border-radius:14px}
+.planned-group-mode legend{padding:0 6px;font-size:12px;font-weight:850}
+.planned-group-mode label{display:flex;align-items:center;gap:9px;min-height:42px;padding:8px 10px;border-radius:11px;background:var(--pale);font-size:13px;font-weight:750}
+.planned-group-mode input{width:18px;height:18px;accent-color:var(--green)}
+.planned-chore-group-edit [data-edit-count-controls]{display:grid;gap:12px}
+.planned-chore-group-edit [data-edit-count-controls][hidden],.planned-chore-group-edit [data-edit-day-controls][hidden]{display:none!important}
+.planned-chore-group-edit [data-edit-count-controls]>label{display:grid;gap:6px;font-size:13px;font-weight:800}
+.planned-group-days{grid-template-columns:1fr}
+@media(max-width:760px){
+ .planned-chore-group{align-items:stretch}
+ .planned-chore-group-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+ .planned-chore-group .planned-chore-schedule{font-size:12px}
+}
+
