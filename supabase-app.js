@@ -325,7 +325,7 @@
       prizeCard.id = 'admin-ranking-prizes';
       prizeCard.className = 'card admin-section admin-ranking-prizes';
       prizeCard.innerHTML = '<div class="section-head"><div><h2>Rankingpriser</h2><p class="admin-muted">Skriv priset som vinnaren får. Lämna tomt eller skriv ”Inget pris” om perioden saknar pris.</p></div></div><form id="admin-prizes-form" class="ranking-prize-form"><label>Dagens pris<input name="day_prize" maxlength="160" placeholder="Inget pris"></label><label>Veckans pris<input name="week_prize" maxlength="160" placeholder="Inget pris"></label><label>Säsongens pris<input name="season_prize" maxlength="160" placeholder="Inget pris"></label><button class="primary-button" type="submit">Spara priser</button></form>';
-      form.closest('.admin-section')?.before(prizeCard);
+      document.querySelector('.admin-picker')?.after(prizeCard);
     }
     const prizeForm = prizeCard.querySelector('#admin-prizes-form');
     if (prizeForm && document.activeElement?.form !== prizeForm) {
