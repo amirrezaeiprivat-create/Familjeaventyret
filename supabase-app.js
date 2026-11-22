@@ -563,13 +563,6 @@
     document.querySelectorAll('.approval-admin').forEach((select) => {
       const badge = document.createElement('span'); badge.className = 'approval-admin-name'; badge.textContent = `Beslut av ${name}`; select.replaceWith(badge);
     });
-    document.querySelectorAll('.approval-row').forEach((row) => {
-      const detail = row.querySelector('.admin-list-copy small')?.textContent || '';
-      const ownSubmission = detail.startsWith(`Inskickad av ${name} `);
-      row.querySelectorAll('[data-quest-decision],[data-curse-decision]').forEach((button) => { button.disabled = ownSubmission; });
-      let note = row.querySelector('.own-submission-note');
-      if (ownSubmission && !note) { note = document.createElement('small'); note.className = 'own-submission-note'; note.textContent = 'Du kan inte besluta om din egen uppgift.'; row.appendChild(note); }
-    });
   }
   const viewObserver = new MutationObserver(() => { if (window.demoSandbox.active) return; decorateLiveUi(); decorateAdminForm(); });
   viewObserver.observe(document.getElementById('view-root'), { childList: true });

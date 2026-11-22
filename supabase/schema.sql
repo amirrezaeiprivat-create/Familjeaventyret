@@ -306,7 +306,6 @@ begin
   select * into v_sub from public.quest_submissions where id=p_submission_id for update;
   if not found or v_sub.status <> 'pending_approval' then raise exception 'Submission is no longer pending'; end if;
   if not public.app_is_family_admin(v_sub.family_id) then raise exception 'Only a family admin can decide submissions'; end if;
-  if v_sub.user_id=auth.uid() then raise exception 'You cannot decide your own submission'; end if;
   select * into v_chore from public.chores where id=v_sub.chore_id for update;
   select display_name into v_admin_name from public.family_members where family_id=v_sub.family_id and user_id=auth.uid();
   update public.quest_submissions set status=p_decision,decided_by=auth.uid(),decided_at=now(),rejection_reason=case when p_decision='rejected' then left(trim(coalesce(p_reason,'')),500) else '' end,rewarded_at=case when p_decision='approved' and v_chore.kind='weekly' then now() else null end where id=v_sub.id;

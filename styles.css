@@ -424,3 +424,60 @@ body{font-size:var(--body-copy);line-height:1.5}
 .season-mini-copy b,.sidebar-player b,.family-switch b{font-size:13px}
 .ranking-score-note{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--pale) 48%,var(--card));color:color-mix(in srgb,var(--ink) 78%,var(--bg));font-size:13px;line-height:1.5}
 @font-face{font-family:"Nunito";src:url("assets/fonts/Nunito-Latin-Variable.woff2") format("woff2");font-style:normal;font-weight:400 900;font-display:swap}:root{--font-app:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif}body,button,input,select,textarea{font-family:var(--font-app)}.brand,.welcome-row h1,.page-title,.hero-card h2,.section-head h2,.admin-heading h1,.profile-card h2{font-family:var(--font-app);font-weight:850;letter-spacing:-.025em}
+.journey-section{padding:22px 22px 18px;border:1px solid color-mix(in srgb,var(--line) 85%,transparent);border-radius:24px;background:color-mix(in srgb,var(--card) 55%,transparent);box-shadow:0 8px 22px rgba(47,58,42,.035)}
+.journey-heading{display:flex;align-items:center;justify-content:space-between;gap:18px}.journey-heading h2{margin:5px 0 4px;font-size:23px;letter-spacing:-.5px}.journey-heading p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}.journey-count{min-width:72px;text-align:center;padding:10px 12px;border-radius:16px;background:var(--pale);color:var(--deep)}.journey-count b{display:block;font-size:22px;line-height:1.05}.journey-count b span{font-size:14px;color:var(--muted)}.journey-count small{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.journey-progress{height:10px;margin:18px 1px 20px;border-radius:999px;background:color-mix(in srgb,var(--line) 70%,var(--card));overflow:hidden}.journey-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--green),color-mix(in srgb,var(--green) 65%,var(--gold)));transition:width .35s ease}.journey-pending{margin:-8px 0 14px;color:var(--muted);font-size:12px}
+.quest-path{list-style:none;margin:0;padding:0 0 0 4px;display:grid;gap:9px}.quest-path-step{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);gap:0 10px;align-items:start}.quest-path-step:not(:last-child)::after{content:"";position:absolute;left:16px;top:34px;bottom:-10px;width:3px;border-radius:3px;background:color-mix(in srgb,var(--line) 85%,transparent)}.path-node{z-index:1;width:34px;height:34px;display:grid;place-items:center;border:2px solid var(--line);border-radius:50%;background:var(--card);color:var(--muted);font-weight:900;font-size:13px;box-shadow:0 2px 0 color-mix(in srgb,var(--line) 60%,transparent)}.path-step-content{min-width:0}.path-step-status{display:inline-block;margin:0 0 4px 4px;color:var(--muted);font-size:10px;font-weight:850;letter-spacing:.035em;text-transform:uppercase}.quest-path-step .quest-row{border:1px solid var(--line);border-radius:17px;background:var(--card);padding:12px;gap:10px;box-shadow:0 2px 0 color-mix(in srgb,var(--line) 65%,transparent)}.quest-path-step .quest-row:first-of-type{padding-top:12px}.quest-path-step.is-complete .path-node{border-color:var(--green);background:var(--green);color:#fff}.quest-path-step.is-complete:not(:last-child)::after{background:color-mix(in srgb,var(--green) 60%,var(--line))}.quest-path-step.is-pending .path-node{border-color:var(--gold);color:#9a741b}.quest-path-step.is-rejected .path-node{border-color:var(--orange);color:#a6532e}.quest-path-step.is-started .path-node,.quest-path-step.is-ready .path-node{border-color:var(--green);color:var(--deep)}.quest-path-step.is-next .path-node{box-shadow:0 0 0 5px color-mix(in srgb,var(--green) 18%,transparent),0 2px 0 color-mix(in srgb,var(--line) 60%,transparent)}.quest-path-step.is-next .path-step-status{color:var(--deep)}.journey-empty{display:grid;justify-items:center;text-align:center;padding:28px 15px;border:1px dashed var(--line);border-radius:18px;background:color-mix(in srgb,var(--pale) 42%,var(--card))}.journey-empty>span{font-size:28px}.journey-empty b{margin-top:8px}.journey-empty p{max-width:280px;margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.5}.journey-all-link{display:flex;justify-content:center;align-items:center;gap:8px;margin:16px auto 0;padding:10px;color:var(--deep);font-size:12px;font-weight:850;text-decoration:none}.journey-all-link span{font-size:18px;transition:transform .15s}.journey-all-link:hover span{transform:translateX(3px)}
+@media(max-width:760px){.journey-section{padding:17px 13px 12px;border-radius:20px}.journey-heading h2{font-size:21px}.journey-heading p{font-size:12px}.journey-count{min-width:64px;padding:9px 8px}.quest-path{gap:8px;padding-left:1px}.quest-path-step{grid-template-columns:29px minmax(0,1fr);gap:0 8px}.path-node{width:29px;height:29px;font-size:12px}.quest-path-step:not(:last-child)::after{left:13px;top:29px;bottom:-9px}.quest-path-step .quest-row{padding:10px}.quest-path-step .quest-row:first-of-type{padding-top:10px}.path-step-status{font-size:9px;margin-left:2px}.journey-progress{margin:15px 1px 16px}}
+@media(max-width:380px){.journey-section{padding:15px 10px 10px}.journey-heading{gap:8px}.journey-heading h2{font-size:19px}.journey-heading p{font-size:11px}.quest-path-step{grid-template-columns:27px minmax(0,1fr);gap:0 6px}.path-node{width:27px;height:27px}.quest-path-step:not(:last-child)::after{left:12px;top:27px}}
+/* Mobil: visa nästa syssla tidigare och minska upprepad statusinformation. */
+@media(max-width:760px){
+ .welcome-row{gap:8px}
+ .welcome-row h1{font-size:24px;line-height:1.15;margin:4px 0}
+ .welcome-row p{font-size:12px}
+ .welcome-right{gap:6px}
+ .currency{padding:7px 9px}
+ .grid-main{margin-top:13px;gap:14px}
+ .hero-card{min-height:154px;padding:14px 15px;border-radius:20px}
+ .hero-copy{max-width:69%}
+ .hero-card h2{font-size:20px;line-height:1.12;margin:7px 0 4px}
+ .hero-card p{font-size:10px;line-height:1.4;margin-bottom:8px}
+ .hero-stats{gap:7px;row-gap:3px}
+ .hero-stat{font-size:8px}
+ .hero-stat b{font-size:10px}
+ .hero-art{right:-12px;transform:translateY(-50%) scale(.62);transform-origin:right center}
+ .hero-art .leaf.two{display:none}
+ .journey-section{padding:14px 11px 10px;border-radius:18px}
+ .journey-heading{gap:8px}
+ .journey-heading h2{font-size:19px;margin:3px 0}
+ .journey-heading p{font-size:11px;line-height:1.4}
+ .journey-count{min-width:55px;padding:7px 6px;border-radius:13px}
+ .journey-count b{font-size:18px}
+ .journey-count b span{font-size:12px}
+ .journey-count small{font-size:8px}
+ .journey-progress{height:7px;margin:11px 1px 12px}
+ .journey-pending{font-size:10px;margin:-5px 0 9px}
+ .quest-path{gap:6px}
+ .quest-path-step{grid-template-columns:26px minmax(0,1fr);gap:0 6px}
+ .path-node{width:26px;height:26px;font-size:11px}
+ .quest-path-step:not(:last-child)::after{left:11px;top:26px;bottom:-7px;width:2px}
+ .path-step-status{font-size:8px;margin:0 0 2px 2px}
+ .quest-path-step .quest-row,.quest-path-step .quest-row:first-of-type{grid-template-columns:32px minmax(0,1fr);gap:6px 8px;padding:8px;border-radius:13px}
+ .quest-path-step .quest-icon{width:32px;height:32px;border-radius:10px}
+ .quest-path-step .quest-info b{font-size:11px;line-height:1.25;margin-bottom:2px}
+ .quest-path-step .quest-info span{font-size:9px;line-height:1.3}
+ .quest-path-step .quest-status{font-size:9px;line-height:1.3}
+ .quest-path-step .quest-action{min-height:32px;min-width:82px;padding:6px 9px;font-size:9px}
+ .quest-path-step.is-complete .quest-action,.quest-path-step.is-pending .quest-action,.quest-path-step.is-complete .quest-status,.quest-path-step.is-pending .quest-status{display:none}
+ .journey-all-link{margin-top:10px;padding:7px;font-size:11px}
+}
+@media(max-width:760px){
+ .hero-card{min-height:126px;padding:12px 14px}
+ .hero-card h2{font-size:18px;margin:5px 0 3px}
+ .hero-card p{display:none}
+ .hero-stats{margin-top:8px}
+ .journey-heading p{display:none}
+ .journey-section{padding-top:12px}
+ .journey-progress{margin-top:9px;margin-bottom:10px}
+ .journey-pending{margin-bottom:7px}
+}
