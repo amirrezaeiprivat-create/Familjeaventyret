@@ -11,7 +11,7 @@ begin
  if not found or v_plan.status<>'open' or v_plan.week_start<>date_trunc('week',now() at time zone 'Europe/Stockholm')::date+7 then raise exception 'Endast sysslor i en öppen plan för nästa vecka kan redigeras.'; end if;
  if exists(select 1 from public.quest_submissions where chore_id=v_chore.id) then raise exception 'En inskickad syssla kan inte redigeras.'; end if;
  if length(trim(coalesce(p_title,'')))<1 or length(trim(p_title))>85 then raise exception 'Ange ett sysslenamn med 1 till 85 tecken.'; end if;
- if p_difficulty is null or p_difficulty not in ('Lätt','Mellan','Svår') then raise exception 'Ogiltig svårighetsgrad.'; end if;
+ if p_difficulty not in ('Lätt','Mellan','Svår') then raise exception 'Ogiltig svårighetsgrad.'; end if;
  if p_xp is null or p_xp<0 or p_xp>500 or p_tokens is null or p_tokens<0 or p_tokens>100 then raise exception 'Ogiltig XP- eller myntbelöning.'; end if;
  if coalesce(cardinality(p_assignees),0)<1 then raise exception 'Välj minst en ansvarig person.'; end if;
  if cardinality(p_assignees)<>(select count(distinct selected.user_id)::integer from unnest(p_assignees) as selected(user_id)) then raise exception 'Samma familjemedlem kan inte väljas flera gånger.'; end if;
