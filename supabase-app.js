@@ -136,7 +136,7 @@
     const state = window.gameState;
     if (!state) throw new Error('Spelstatusen kunde inte läsas in. Ladda om sidan.');
     const familyId = data.familyId;
-    const [family, members, plans, chores, submissions, creatures, creatureEffects, abilityRequests, chestCredits, familyChallenges, weeklyRewards] = await Promise.all([
+    const [family, members, plans, chores, submissions, creatures, creatureEffects, abilityRequests, chestCredits, familyChallenges, weeklyRewards, prizeRows] = await Promise.all([
       call(client.from('families').select('name').eq('id', familyId).single()),
       call(client.from('family_members').select('family_id,user_id,display_name,role,xp,tokens,shards,streak,is_active').eq('family_id', familyId).eq('is_active', true)),
       call(client.from('weekly_plans').select('*').eq('family_id', familyId).in('week_start', [getMonday(), getNextMonday()])),
@@ -147,7 +147,8 @@
       optionalRows(client.from('creature_ability_requests').select('*').eq('family_id', familyId).order('created_at', { ascending: false })),
       optionalRows(client.from('creature_chest_credits').select('*').eq('family_id', familyId).eq('user_id', data.member.user_id).is('redeemed_at', null).order('created_at')),
       optionalRows(client.from('family_challenges').select('*').eq('family_id', familyId).in('status', ['active','complete']).order('starts_at', { ascending: false })),
-      call(client.from('weekly_rewards').select('id').eq('family_id', familyId).eq('user_id', data.member.user_id).limit(1))
+      call(client.from('weekly_rewards').select('id').eq('family_id', familyId).eq('user_id', data.member.user_id).limit(1)),
+      optionalRows(client.from('family_ranking_prizes').select('day_prize,week_prize,season_prize').eq('family_id', familyId).limit(1))
     ]);
     const approved = submissions.filter(row => row.user_id === data.member.user_id &&
       row.status === 'approved' && row.chores?.kind === 'weekly');
@@ -172,6 +173,7 @@
       ['🏆', window.activeSeason?.name || 'Säsongsäventyret', 'Ett godkänt uppdrag denna säsong', approved.some(row => Date.parse(row.decided_at) >= seasonStart.getTime())]
     ];
     data.familyName = family.name;
+    data.prizes = prizeRows[0] || { day_prize: "", week_prize: "", season_prize: "" };
     data.members = members;
     data.member = members.find((member) => member.user_id === data.member.user_id) || data.member;
     data.familyCreatures = [];
@@ -316,6 +318,18 @@
     if (data.member.role === 'admin') {
       let sandboxCard = document.getElementById('admin-sandbox-entry');
       if (!sandboxCard) { sandboxCard = document.createElement('section'); sandboxCard.id = 'admin-sandbox-entry'; sandboxCard.className = 'card admin-section sandbox-entry-card'; sandboxCard.innerHTML = '<div><span class="eyebrow">RISKFRI TESTYTA</span><h2>Testa utan risk</h2><p class="admin-muted">Öppna en separat kopia av familjeäventyret med obegränsat antal mynt. Inget du gör sparas på familjekontot.</p></div><button type="button" class="primary-button" data-demo-start>Starta demoläge</button>'; form.closest('.admin-section')?.before(sandboxCard); }
+    }
+    let prizeCard = document.getElementById('admin-ranking-prizes');
+    if (!prizeCard) {
+      prizeCard = document.createElement('section');
+      prizeCard.id = 'admin-ranking-prizes';
+      prizeCard.className = 'card admin-section admin-ranking-prizes';
+      prizeCard.innerHTML = '<div class="section-head"><div><h2>Rankingpriser</h2><p class="admin-muted">Skriv priset som vinnaren får. Lämna tomt eller skriv ”Inget pris” om perioden saknar pris.</p></div></div><form id="admin-prizes-form" class="ranking-prize-form"><label>Dagens pris<input name="day_prize" maxlength="160" placeholder="Inget pris"></label><label>Veckans pris<input name="week_prize" maxlength="160" placeholder="Inget pris"></label><label>Säsongens pris<input name="season_prize" maxlength="160" placeholder="Inget pris"></label><button class="primary-button" type="submit">Spara priser</button></form>';
+      form.closest('.admin-section')?.before(prizeCard);
+    }
+    const prizeForm = prizeCard.querySelector('#admin-prizes-form');
+    if (prizeForm && document.activeElement?.form !== prizeForm) {
+      for (const field of ['day_prize','week_prize','season_prize']) prizeForm.elements[field].value = data.prizes?.[field] || '';
     }
     renderAbilityRequests();
     const existingMemberCard = document.getElementById('family-member-management');
@@ -822,6 +836,20 @@
   });
   document.addEventListener('submit', async (event) => {
     if (window.demoSandbox.active) return;
+    if (event.target.id === 'admin-prizes-form' && data.familyId) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (data.member.role !== 'admin') return;
+      const values = new FormData(event.target);
+      const prizes = Object.fromEntries(['day_prize','week_prize','season_prize'].map(key => [key, String(values.get(key) || '').trim()]));
+      const button = event.submitter; if (button) button.disabled = true;
+      try {
+        await call(client.from('family_ranking_prizes').upsert({ family_id: data.familyId, ...prizes }, { onConflict: 'family_id' }));
+        data.prizes = prizes; window.remoteFamily.prizes = prizes;
+        window.showToast?.('Rankingpriserna har sparats.');
+      } catch (error) { window.showToast?.(error.message || 'Priserna kunde inte sparas.'); }
+      finally { if (button) button.disabled = false; }
+      return;
+    }
     if (event.target.id === 'admin-self-token-form' && data.familyId) {
       event.preventDefault(); event.stopImmediatePropagation();
       if (data.member.role !== 'admin') return;
