@@ -359,7 +359,7 @@
     }
     let nextWeekCard = document.getElementById('admin-next-week-card');
     const memberNames = new Map(data.members.map((member) => [member.user_id, member.display_name]));
-    const nextWeekSignature = `${data.members.map((member) => `${member.user_id}:${member.display_name}`).join('|')}|${data.nextPlan?.week_start || 'saknas'}:${data.nextPlan?.status || 'saknas'}|${data.nextWeekChores.map((chore) => `${chore.id}:${chore.title}`).join('|')}`;
+    const nextWeekSignature = `${data.members.map((member) => `${member.user_id}:${member.display_name}`).join('|')}|${data.nextPlan?.week_start || 'saknas'}:${data.nextPlan?.status || 'saknas'}|${data.nextWeekChores.map((chore) => `${chore.id}:${chore.title}:${chore.description}:${chore.xp_reward}:${chore.token_reward}:${chore.difficulty}:${(chore.chore_assignments || []).map((assignment) => `${assignment.user_id}:${assignment.scheduled_for || ''}`).sort().join(',')}`).join('|')}`;
     const nextPlanLabel = data.nextPlan?.week_start
       ? new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'long' }).format(new Date(`${data.nextPlan.week_start}T12:00:00`))
       : 'nästa vecka';
