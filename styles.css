@@ -509,3 +509,20 @@ body{font-size:var(--body-copy);line-height:1.5}
 .quest-row.is-scheduled{opacity:.84}
 .quest-status.schedule-hint{color:var(--deep);font-weight:750}
 @media(max-width:760px){.next-week-quest-form .next-week-schedule{grid-template-columns:minmax(0,1fr);gap:8px}.next-week-quest-form .next-week-schedule>label:not(.frequency-choice){grid-column:1;min-height:46px}.weekday-assignment-list{grid-template-columns:minmax(0,1fr)}.weekday-assignment{min-height:54px}.weekday-assignment select{font-size:16px;min-height:44px}.next-week-quest-form .schedule-help{font-size:13px}.weekday-assignment-summary{font-size:13px}}
+
+
+.planned-chore-edit{max-height:min(78vh,720px);overflow:auto;padding:8px 4px;text-align:left}
+.planned-chore-edit h2{margin:5px 0;font-size:24px}
+.planned-chore-edit>p{margin:0 0 16px;color:var(--muted);font-size:14px;line-height:1.5}
+.planned-chore-edit form{display:grid;gap:12px}
+.planned-chore-edit form>label,.planned-chore-rewards label{display:grid;gap:6px;color:var(--ink);font-size:13px;font-weight:800}
+.planned-chore-edit :is(input:not([type=checkbox]),select,textarea){width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:15px}
+.planned-chore-edit textarea{resize:vertical}
+.planned-chore-rewards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.planned-chore-assignees{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:12px;border:1px solid var(--line);border-radius:14px}
+.planned-chore-assignees legend{padding:0 6px;font-size:12px;font-weight:850}
+.planned-chore-assignees label{display:flex;align-items:center;gap:8px;min-height:42px;padding:8px;border-radius:10px;background:var(--pale);font-size:13px;font-weight:750}
+.planned-chore-assignees input{width:18px;height:18px;accent-color:var(--green)}
+.planned-chore-note{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.planned-chore-edit .primary-button{width:100%;min-height:48px}
+@media(max-width:480px){.planned-chore-edit h2{font-size:21px}.planned-chore-rewards{grid-template-columns:1fr}.planned-chore-assignees{grid-template-columns:1fr}.planned-chore-edit :is(input,select,textarea){font-size:16px}}
