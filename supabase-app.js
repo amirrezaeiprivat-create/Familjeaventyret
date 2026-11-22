@@ -632,6 +632,19 @@
       }
       return;
     }
+    const clearNotifications = event.target.closest('[data-clear-notifications]');
+    if (clearNotifications && data.member && data.familyId && !window.demoSandbox.active) {
+      event.preventDefault(); event.stopImmediatePropagation(); clearNotifications.disabled = true;
+      try {
+        await call(client.from('notifications').delete().eq('family_id', data.familyId).eq('user_id', data.member.user_id));
+        window.gameState.notifications = [];
+        window.showNotifications();
+      } catch (error) {
+        clearNotifications.disabled = false;
+        window.showToast?.('Aviseringarna kunde inte rensas. Kontrollera att den senaste SQL-migreringen är installerad.');
+      }
+      return;
+    }
     const deleteWeeklyChore = event.target.closest('[data-delete-weekly-chore]');
     if (deleteWeeklyChore && data.familyId && data.member.role === 'admin') {
       event.preventDefault(); event.stopImmediatePropagation();
