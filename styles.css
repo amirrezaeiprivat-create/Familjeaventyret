@@ -223,3 +223,69 @@ button{touch-action:manipulation}button:focus-visible,a:focus-visible,input:focu
 @media(max-width:760px){.section-head{gap:8px;flex-wrap:wrap}.section-head h2{min-width:0}.section-head>.link-button{margin-left:auto;max-width:50%;white-space:normal;text-align:right}}
 
 .next-week-quest-form .next-week-assignees,.next-week-quest-form .next-week-schedule{grid-column:1/-1;display:flex;align-items:center;gap:9px 16px;flex-wrap:wrap;min-width:0;border:1px solid #e2eae0;border-radius:12px;padding:10px 12px}.next-week-quest-form fieldset legend{font-size:10px;color:#768276;font-weight:800;padding:0 4px}.next-week-quest-form .next-week-assignees label,.next-week-quest-form .next-week-schedule>label:not(.frequency-choice){display:inline-flex;align-items:center;gap:5px;font-size:10px;color:#4f5f50}.next-week-quest-form input[type=checkbox],.next-week-quest-form input[type=radio]{accent-color:#56bf6c}.next-week-quest-form .frequency-choice{display:flex;align-items:center;gap:8px;font-size:10px}.next-week-quest-form .frequency-choice select{border:1px solid #e5ebe3;background:#fbfcfa;border-radius:9px;padding:8px;font:inherit;font-size:10px;color:var(--ink)}.next-week-quest-form .weekday-choice{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.next-week-quest-form .weekday-choice label{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;border-radius:9px;background:#f6f8f4;font-size:10px}.next-week-quest-form .frequency-choice[hidden],.next-week-quest-form .weekday-choice[hidden]{display:none!important}.next-week-quest-form>.primary-button{grid-column:1/-1;justify-self:start}.next-week-list-heading{justify-content:space-between;margin-top:11px}.next-week-list-heading>b{font-size:11px}.next-week-list-heading>span{font-size:9px;color:#818a81}.admin-next-week-list{min-width:0}.admin-next-week-list .admin-list-row{flex-wrap:wrap}.admin-next-week-list .admin-list-copy{min-width:0;flex:1 1 60%}@media(max-width:760px){.next-week-quest-form .next-week-assignees,.next-week-quest-form .next-week-schedule{padding:9px;gap:8px}.next-week-quest-form>.primary-button{width:100%;justify-self:stretch}.next-week-quest-form .weekday-choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.admin-next-week-list .admin-list-copy{flex-basis:100%}}
+
+/* Adminpanelen: tydligare hierarki, större tryckytor och lugnare sektioner. */
+.admin-heading{position:relative;isolation:isolate;overflow:hidden;margin:0 0 18px;padding:25px 27px;border:1px solid #e6d8c8;border-radius:24px;background:linear-gradient(115deg,#fffaf3 0%,#f8f0e5 68%,#f1e6d8 100%);box-shadow:0 5px 0 #e7dccf,0 14px 28px #3b2b1b0b}
+.admin-heading:after{content:"";position:absolute;z-index:-1;width:210px;height:210px;right:-55px;top:-95px;border-radius:50%;background:radial-gradient(circle,#e8f5e8 0,#e8f5e8aa 48%,transparent 70%)}
+.admin-heading .eyebrow{font-size:10px;letter-spacing:1.3px;color:#9a795b;font-weight:900}
+.admin-heading h1{margin:5px 0 6px;font-size:clamp(27px,3vw,36px);letter-spacing:-1px}
+.admin-heading p{max-width:620px;font-size:13px;line-height:1.55;color:#786f65}
+.admin-heading>.admin-role-chip{margin-top:3px;padding:8px 12px;font-size:9px;box-shadow:0 2px 5px #38764316}
+.admin-metrics{gap:14px;margin:0 0 19px}
+.admin-metric{position:relative;min-height:126px;align-content:center;gap:8px;padding:20px 21px;border:1px solid #e9dfd3;border-radius:20px;background:linear-gradient(145deg,#fffdf9,#faf6ef);box-shadow:0 4px 0 #e8dfd5,0 10px 22px #3b2b1b08;transition:transform .16s,box-shadow .16s}
+.admin-metric:hover{transform:translateY(-2px);box-shadow:0 6px 0 #e8dfd5,0 14px 25px #3b2b1b10}
+.admin-metric small{font-size:10px;letter-spacing:.8px;color:#8d7a66}
+.admin-metric>b{font-size:32px;color:#3a3028}
+.admin-metric span{font-size:11px;color:#7c8179}
+.admin-section{margin-top:16px;padding:21px 23px;border:1px solid #e8ddd1;border-radius:21px;background:linear-gradient(145deg,#fffdf9,#fffaf3);box-shadow:0 4px 0 #e8ded3,0 11px 24px #3b2b1b08}
+.admin-section>.section-head{align-items:center;gap:12px;margin:0 0 13px;padding-bottom:12px;border-bottom:1px solid #f0e9df}
+.admin-section .section-head h2{font-size:17px;letter-spacing:-.25px}
+.admin-section .section-head p.admin-muted{margin:4px 0 0;font-size:12px;line-height:1.5}
+.admin-section .level-chip{flex:none;padding:7px 10px;font-size:9px;letter-spacing:.25px}
+.admin-muted{font-size:12px;line-height:1.6;color:#7d8179}
+.admin-section .admin-quest-form{gap:13px;align-items:end}
+.admin-quest-form label,.admin-token-form label{gap:7px;font-size:11px;color:#665f55;font-weight:800}
+.admin-quest-form input,.admin-quest-form select,.admin-token-form input,.family-member-admin-row select,.invite-controls select{min-height:44px;padding:10px 12px;border:1px solid #e4ddd3;border-radius:12px;background:#fffefa;font-size:13px;box-shadow:0 1px 2px #34271c08}
+.admin-quest-form input:focus,.admin-quest-form select:focus,.admin-token-form input:focus,.family-member-admin-row select:focus{outline:3px solid #d7edda;border-color:#85c891}
+.admin-section .primary-button,.admin-section .filter-tab{min-height:42px;border-radius:12px;font-size:11px}
+.admin-section .admin-list-row{gap:12px;padding:13px 2px;border-color:#eee8df}
+.admin-list-row>b,.admin-list-copy b{font-size:12px;line-height:1.4}
+.admin-list-copy small{font-size:10px;line-height:1.5}
+.admin-list-row>span:not(.quest-icon){font-size:10px}
+.approval-row{margin:9px 0;padding:13px;border:1px solid #eee6da;border-radius:14px;background:#fffefa}
+.approval-row .approval-admin,.approval-row .rejection-reason{min-height:42px;padding:9px 11px;border:1px solid #e5ddd2;border-radius:10px;background:#fff;font:inherit;font-size:12px;color:var(--ink)}
+.approval-row button{min-height:40px;padding:8px 12px;border-radius:10px;font-size:11px}
+.family-member-admin-row{gap:12px;padding:15px 0}
+.family-member-admin-name b{font-size:13px}.family-member-admin-name small{font-size:10px}
+.family-member-admin-row button{min-height:40px;padding:8px 12px;font-size:10px}
+.invite-controls{gap:12px}.invite-controls select{max-width:260px}.invite-family-card output{font-size:13px}
+.weekly-plan-card{border-color:#dce9d9;background:linear-gradient(135deg,#f7fcf5,#fffdf9)}
+.admin-next-week-card{border-color:#e8ddc8;background:linear-gradient(135deg,#fffbf1,#fffdf9)}
+.admin-weekly-chores{border-color:#e8ddd1}
+.admin-self-coins{border-color:#f0dfb5;background:linear-gradient(135deg,#fff9e9,#fffdf9)}
+.admin-next-week-quest-form fieldset{border-color:#e6dfd4;background:#fffefa}
+.admin-next-week-quest-form fieldset label{font-size:11px!important}
+.admin-section :is(button,select,input){transition:border-color .15s,box-shadow .15s,background-color .15s}
+@media(max-width:760px){
+ .admin-heading{padding:20px 18px;border-radius:20px}
+ .admin-heading p{font-size:12px}
+ .admin-metrics{gap:9px}
+ .admin-metric{min-height:108px;padding:14px;border-radius:16px}
+ .admin-metric small{font-size:9px;line-height:1.35}
+ .admin-metric>b{font-size:27px}
+ .admin-metric span{font-size:10px;line-height:1.4}
+ .admin-section{padding:17px 15px;border-radius:18px}
+ .admin-section>.section-head{align-items:flex-start;padding-bottom:10px}
+ .admin-section .section-head h2{font-size:15px}
+ .admin-section .level-chip{padding:6px 8px;font-size:8px}
+ .admin-section .admin-list-row{gap:9px;padding:12px 0}
+ .admin-section .admin-list-copy{flex-basis:100%;overflow-wrap:anywhere}
+ .admin-section .admin-list-row button{min-height:42px}
+ .admin-token-form{display:grid;grid-template-columns:minmax(0,1fr)}
+ .admin-token-form label{min-width:0}
+ .admin-token-form .primary-button{width:100%;min-height:44px}
+ .invite-controls{align-items:stretch;flex-direction:column}
+ .invite-controls select,.invite-controls .primary-button{width:100%;max-width:none;min-height:44px}
+ .family-member-admin-row{grid-template-columns:minmax(0,1fr) minmax(115px,.8fr);gap:8px}
+ .family-member-admin-row button{min-height:42px}
+}
