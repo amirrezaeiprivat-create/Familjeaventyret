@@ -328,6 +328,50 @@
     if (card.innerHTML !== markup) card.innerHTML = markup;
     if (!section) form.closest('.admin-section')?.before(card);
   }
+  function decorateDemoAdmin(form) {
+    if (!window.demoSandbox.active || data.member?.role !== 'admin') return;
+    const state = window.gameState;
+    if (!state) return;
+    let bankCard = document.getElementById('admin-chore-bank');
+    if (!bankCard) {
+      bankCard = document.createElement('section');
+      bankCard.id = 'admin-chore-bank';
+      bankCard.className = 'card admin-section admin-chore-bank';
+      bankCard.innerHTML = '<div class="section-head"><div><div class="eyebrow">EXTRA ÄVENTYR · DEMO</div><h2>Sysselbanken</h2><p class="admin-muted">Prova att skapa och plocka extrasysslor. Alla ändringar stannar i demoläget.</p></div><span class="level-chip">ENDAST DEMO</span></div><form id="demo-admin-create-bank-item" class="admin-quest-form bank-chore-form"><label>Sysslans namn<input name="title" required maxlength="85" placeholder="Till exempel: Vattna blommorna"></label><label>Beskrivning<input name="description" maxlength="300" placeholder="Kort instruktion"></label><label>XP-belöning<input name="xp" type="number" min="0" max="500" value="15" required></label><label>Myntbelöning<input name="tokens" type="number" min="0" max="100" value="3" required></label><label>Svårighetsgrad<select name="difficulty"><option value="Lätt">Lätt</option><option value="Mellan">Mellan</option><option value="Svår">Svår</option></select></label><label>Personer som behövs<input name="requiredPeople" type="number" min="1" max="8" value="1" required></label><label>Vila efter slutförd (dagar)<input name="cooldownDays" type="number" min="1" max="90" value="7" required></label><button class="primary-button" type="submit">＋ Lägg i Sysselbanken</button></form><div class="bank-admin-list"></div>';
+      form.closest('.admin-section')?.after(bankCard);
+    }
+    const items = state.demoBankItems || [];
+    const bankList = bankCard.querySelector('.bank-admin-list');
+    const bankMarkup = items.length ? items.map((item) => `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(item.title)}</b><small>${escHtml(item.difficulty || 'Lätt')} · ${item.xp_reward} XP · ${item.token_reward} mynt · ${Number(item.required_people)||1} person${Number(item.required_people)===1?'':'er'} · ${Number(item.cooldown_days)||7} dagars vila${item.cooldown_until && new Date(item.cooldown_until).getTime()>Date.now() ? ' · Vilar' : ' · Tillgänglig'}</small>${item.description ? `<small>${escHtml(item.description)}</small>` : ''}</div><button type="button" class="filter-tab" data-demo-edit-bank="${escHtml(item.id)}">Redigera</button><button type="button" class="filter-tab admin-remove" data-demo-delete-bank="${escHtml(item.id)}">Ta bort</button></div>`).join('') : '<p class="admin-muted">Banken är tom. Lägg till en syssla för att prova den.</p>';
+    if (bankList && bankList.dataset.signature !== bankMarkup) { bankList.innerHTML = bankMarkup; bankList.dataset.signature = bankMarkup; }
+
+    let weekCard = document.getElementById('demo-weekly-chores');
+    if (!weekCard) {
+      weekCard = document.createElement('section');
+      weekCard.id = 'demo-weekly-chores';
+      weekCard.className = 'card admin-section admin-weekly-chores';
+      document.getElementById('admin-chore-bank')?.before(weekCard);
+    }
+    const allWeekChores = [...(state.demoWeeklyChores || [])];
+    for (const chore of state.customQuests || []) if (!allWeekChores.some((entry) => String(entry.id) === String(chore.id))) allWeekChores.push(chore);
+    const chores = allWeekChores;
+    const weekMarkup = `<div class="section-head"><div><h2>Denna vecka</h2><p class="admin-muted">Redigera veckans uppgifter i en isolerad kopia. Inget sparas på familjekontot.</p></div><span class="level-chip">${chores.length} SYSSLOR</span></div>${chores.map((chore) => `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(chore.title)}</b><small>${escHtml(chore.assignedTo || 'Familjeuppgift')}</small><small>${escHtml(chore.difficulty || 'Lätt')} · ${Number(chore.xp) || 0} XP · ${Number(chore.tokens) || 0} mynt</small></div><button type="button" class="filter-tab" data-edit-demo-weekly="${escHtml(chore.id)}">Redigera</button></div>`).join('') || '<p class="admin-muted">Inga veckosysslor finns i den här demoläget än.</p>'}`;
+    if (weekCard.innerHTML !== weekMarkup) weekCard.innerHTML = weekMarkup;
+  }
+
+  function decorateDemoQuests() {
+    if (!window.demoSandbox.active) return;
+    const current = document.querySelector('#view-root .chore-bank-card');
+    const state = window.gameState;
+    if (!current || !state) return;
+    const members = data.members.length ? data.members : [{ user_id: data.member?.user_id || 'demo-admin', display_name: data.member?.display_name || 'Admin' }];
+    const now = Date.now();
+    const items = state.demoBankItems || [];
+    const html = `<section class="card chore-bank-card demo-chore-bank"><div class="chore-bank-heading"><div><div class="eyebrow">EXTRA ÄVENTYR</div><h2>Sysselbanken</h2><p>Reservera en extrasyssla. När alla platser är fyllda får deltagarna uppgiften.</p></div><span class="chore-bank-mark">＋</span></div>${items.length ? `<div class="chore-bank-list">${items.filter((item) => item.is_active !== false).map((item) => { const reserved = Array.isArray(item.reserved_by) ? item.reserved_by : []; const needed = Math.max(1, Number(item.required_people) || 1); const until = item.cooldown_until ? new Date(item.cooldown_until).getTime() : 0; const cooling = until > now; const left = cooling ? Math.max(1, Math.ceil((until - now) / 86400000)) : 0; return `<article class="chore-bank-offer"><div class="chore-bank-icon">✦</div><div class="chore-bank-copy"><b>${escHtml(item.title)}</b><small>${escHtml(item.description || 'Extra syssla')} · ${escHtml(item.difficulty || 'Lätt')}</small><span>+${item.xp_reward} XP · ${item.token_reward} mynt</span><small>${cooling ? `Vilar i ${left} dagar` : `${reserved.length}/${needed} personer reserverade`} · ${Number(item.cooldown_days)||7} dagars vila</small></div><div class="bank-claim-actions">${cooling ? '<span class="level-chip">VILAR</span>' : members.map((member) => { const already = reserved.includes(member.user_id); return `<button class="filter-tab bank-join-button" type="button" data-demo-bank-reserve="${escHtml(item.id)}" data-demo-bank-user="${escHtml(member.user_id)}" ${already ? 'disabled' : ''}>${already ? 'Reserverad: ' : 'Anslut: '}${escHtml(member.display_name)}</button>`; }).join('')}</div></article>`; }).join('')}</div>` : '<div class="chore-bank-empty"><span>🌱</span><b>Inga extrasysslor just nu</b><small>Skapa en syssla i adminpanelen för att prova banken.</small></div>'}</section>`;
+    const signature = JSON.stringify(items);
+    if (current.dataset.demoBankSignature !== signature) { current.outerHTML = html; document.querySelector('#view-root .demo-chore-bank').dataset.demoBankSignature = signature; }
+  }
+
   function decorateAdminForm() {
     const form = document.getElementById('admin-create-quest');
     if (!form) return;
@@ -440,9 +484,9 @@
     const weeklyChoreMarkup = data.weeklyChores.map((chore) => {
       const assignees = (chore.chore_assignments || []).map((assignment) => memberNames.get(assignment.user_id)).filter(Boolean);
       const completed = (chore.quest_submissions || []).some((submission) => submission.status === 'approved');
-      return `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(chore.title)}</b><small>${escHtml(assignees.join(', ') || 'Ingen tilldelad')} · ${escHtml(chore.difficulty || 'Lätt')} · ${chore.xp_reward} XP · ${chore.token_reward} mynt</small></div><button class="filter-tab admin-remove" type="button" data-delete-weekly-chore="${escHtml(chore.id)}" ${completed ? 'disabled title="En redan godkänd uppgift kan inte tas bort."' : ''}>Ta bort</button></div>`;
+      return `<div class="admin-list-row"><div class="admin-list-copy"><b>${escHtml(chore.title)}</b><small>${escHtml(assignees.join(', ') || 'Ingen tilldelad')} · ${escHtml(chore.difficulty || 'Lätt')} · ${chore.xp_reward} XP · ${chore.token_reward} mynt</small></div><button class="filter-tab" type="button" data-edit-current-weekly-chore="${escHtml(chore.id)}" ${chore.quest_submissions?.length || data.plan?.status !== 'open' ? 'disabled title="Uppgiften har redan skickats in eller veckan är stängd."' : ''}>Redigera</button><button class="filter-tab admin-remove" type="button" data-delete-weekly-chore="${escHtml(chore.id)}" ${completed ? 'disabled title="En redan godkänd uppgift kan inte tas bort."' : ''}>Ta bort</button></div>`;
     }).join('');
-    const managerMarkup = `<div class="section-head"><div><h2>Hantera utdelade sysslor</h2><p class="admin-muted">Ta bort en syssla från veckans uppgifter. Godkända sysslor behålls i historiken.</p></div><span class="level-chip">${data.weeklyChores.length} SYSSLOR</span></div>${weeklyChoreMarkup || '<p class="admin-muted">Inga aktiva veckosysslor att hantera.</p>'}`;
+    const managerMarkup = `<div class="section-head"><div><h2>Denna vecka</h2><p class="admin-muted">Redigera eller ta bort veckans uppgifter. Redigering låses när någon har skickat in uppgiften.</p></div><span class="level-chip">${data.weeklyChores.length} SYSSLOR</span></div>${weeklyChoreMarkup || '<p class="admin-muted">Inga aktiva veckosysslor att hantera.</p>'}`;
     if (choreManager.innerHTML !== managerMarkup) choreManager.innerHTML = managerMarkup;
     if (!choreManager.isConnected) document.getElementById('weekly-plan-card')?.after(choreManager);
     let creatureManager = document.getElementById('admin-family-creatures');
@@ -613,7 +657,7 @@
       const badge = document.createElement('span'); badge.className = 'approval-admin-name'; badge.textContent = `Beslut av ${name}`; select.replaceWith(badge);
     });
   }
-  const viewObserver = new MutationObserver(() => { if (window.demoSandbox.active) return; decorateLiveUi(); decorateAdminForm(); });
+  const viewObserver = new MutationObserver(() => { if (window.demoSandbox.active) { decorateDemoAdmin(document.getElementById('admin-create-quest')); decorateDemoQuests(); return; } decorateLiveUi(); decorateAdminForm(); });
   viewObserver.observe(document.getElementById('view-root'), { childList: true });
   async function refresh() {
     if (window.demoSandbox.active) return;
@@ -624,7 +668,17 @@
     if (data.member?.role !== 'admin') return;
     window.demoSandbox.snapshot = window.gameState;
     window.demoSandbox.active = true;
+    const liveOffers = (data.choreBankItems || []).filter((item) => item.is_active && !item.claimed_at).map((item) => ({ ...item, required_people: 1, cooldown_days: 7, reserved_by: [] }));
+    window.demoSandbox.bankItems = liveOffers.length ? JSON.parse(JSON.stringify(liveOffers)) : [
+      { id: 'demo-bank-dish', title: 'Plocka ur diskmaskinen', description: 'Ställ tillbaka den rena disken.', difficulty: 'Lätt', xp_reward: 20, token_reward: 8, is_active: true },
+      { id: 'demo-bank-plants', title: 'Vattna växterna', description: 'Ge familjens växter lite omsorg.', difficulty: 'Mellan', xp_reward: 35, token_reward: 15, is_active: true },
+      { id: 'demo-bank-room', title: 'Gör fint i hallen', description: 'Ställ skor på plats och häng upp jackor.', difficulty: 'Svår', xp_reward: 50, token_reward: 25, is_active: true }
+    ];
+    window.demoSandbox.weeklyChores = (data.weeklyChores || []).map((chore) => ({ id: chore.id, title: chore.title, detail: chore.description || '', xp: Number(chore.xp_reward)||0, tokens: Number(chore.token_reward)||0, difficulty: chore.difficulty || 'Lätt', assignedTo: (chore.chore_assignments || []).map((assignment) => data.members.find((member) => member.user_id === assignment.user_id)?.display_name).filter(Boolean).join(', ') }));
+    data.choreBankItems = JSON.parse(JSON.stringify(window.demoSandbox.bankItems));
     window.beginLocalDemo?.();
+    decorateDemoAdmin(document.getElementById('admin-create-quest'));
+    decorateDemoQuests();
     document.body.classList.add('demo-mode');
     const banner = document.createElement('div');
     banner.id = 'demo-mode-banner'; banner.className = 'demo-mode-banner';
@@ -684,7 +738,55 @@
     if (demoStart) { event.preventDefault(); event.stopImmediatePropagation(); startDemoMode(); return; }
     const demoExit = event.target.closest('[data-demo-exit]');
     if (demoExit && window.demoSandbox.active) { event.preventDefault(); event.stopImmediatePropagation(); await stopDemoMode(); return; }
-    if (window.demoSandbox.active) return;
+    if (window.demoSandbox.active) {
+      const demoState = window.gameState;
+      const reserveButton = event.target.closest('[data-demo-bank-reserve]');
+      if (reserveButton && demoState) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const item = (demoState.demoBankItems || []).find((entry) => String(entry.id) === reserveButton.dataset.demoBankReserve);
+        const userId = reserveButton.dataset.demoBankUser;
+        if (!item || !userId || (item.cooldown_until && new Date(item.cooldown_until).getTime() > Date.now())) return;
+        item.reserved_by = Array.isArray(item.reserved_by) ? item.reserved_by : [];
+        if (item.reserved_by.includes(userId)) return;
+        item.reserved_by.push(userId);
+        const required = Math.max(1, Number(item.required_people) || 1);
+        if (item.reserved_by.length >= required) {
+          const participants = item.reserved_by.slice(0, required);
+          participants.forEach((participantId) => {
+            const member = data.members.find((entry) => entry.user_id === participantId);
+            demoState.customQuests.push({ id: `demo-bank-task-${item.id}-${participantId}-${Date.now()}`, title: item.title, detail: item.description || 'Extra syssla', icon: 'dish', color: 'green', difficulty: item.difficulty || 'Lätt', xp: Number(item.xp_reward) || 0, tokens: Number(item.token_reward) || 0, demoBankId: item.id, assignedTo: member?.display_name || 'Familjemedlem' });
+          });
+          item.cooldown_until = new Date(Date.now() + Math.max(1, Number(item.cooldown_days) || 7) * 86400000).toISOString();
+          item.reserved_by = [];
+          window.showToast?.('Alla platser fylldes. Sysslan delades ut och banken vilar nu.');
+        } else window.showToast?.(`${item.reserved_by.length}/${required} personer har reserverat sysslan.`);
+        window.demoSandbox.workingState = demoState; window.renderGame?.(); return;
+      }
+      const editDemoWeekly = event.target.closest('[data-edit-demo-weekly]');
+      if (editDemoWeekly && demoState) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const chore = [...(demoState.demoWeeklyChores || []), ...(demoState.customQuests || [])].find((entry) => String(entry.id) === editDemoWeekly.dataset.editDemoWeekly);
+        if (!chore) return;
+        window.openModal?.(`<div class="planned-chore-edit"><button class="modal-close" data-close aria-label="Stäng">×</button><div class="eyebrow">DEMOLÄGE · DENNA VECKA</div><h2>Redigera uppgift</h2><p>Ändringarna påverkar bara den tillfälliga demoläget.</p><form id="demo-edit-weekly"><input type="hidden" name="id" value="${escHtml(chore.id)}"><label>Uppgiftens namn<input name="title" maxlength="85" required value="${escHtml(chore.title)}"></label><label>Beskrivning<textarea name="description" maxlength="300" rows="3">${escHtml(chore.detail || '')}</textarea></label><div class="planned-chore-rewards"><label>XP<input name="xp" type="number" min="0" max="500" required value="${Number(chore.xp)||0}"></label><label>Mynt<input name="tokens" type="number" min="0" max="100" required value="${Number(chore.tokens)||0}"></label></div><label>Svårighetsgrad<select name="difficulty"><option ${chore.difficulty==='Lätt'?'selected':''}>Lätt</option><option ${chore.difficulty==='Mellan'?'selected':''}>Mellan</option><option ${chore.difficulty==='Svår'?'selected':''}>Svår</option></select></label><button class="primary-button" type="submit">Spara ändringar</button></form></div>`);
+        return;
+      }
+      const editDemoBank = event.target.closest('[data-demo-edit-bank]');
+      if (editDemoBank && demoState) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const item = (demoState.demoBankItems || []).find((entry) => String(entry.id) === editDemoBank.dataset.demoEditBank);
+        if (!item) return;
+        window.openModal?.(`<div class="planned-chore-edit"><button class="modal-close" data-close aria-label="Stäng">×</button><div class="eyebrow">DEMOLÄGE · SYSSELBANKEN</div><h2>Redigera banksyssla</h2><form id="demo-edit-bank-item"><input type="hidden" name="id" value="${escHtml(item.id)}"><label>Sysslans namn<input name="title" maxlength="85" required value="${escHtml(item.title)}"></label><label>Beskrivning<textarea name="description" maxlength="300" rows="3">${escHtml(item.description||'')}</textarea></label><div class="planned-chore-rewards"><label>XP<input name="xp" type="number" min="0" max="500" required value="${Number(item.xp_reward)||0}"></label><label>Mynt<input name="tokens" type="number" min="0" max="100" required value="${Number(item.token_reward)||0}"></label></div><label>Svårighetsgrad<select name="difficulty"><option ${item.difficulty==='Lätt'?'selected':''}>Lätt</option><option ${item.difficulty==='Mellan'?'selected':''}>Mellan</option><option ${item.difficulty==='Svår'?'selected':''}>Svår</option></select></label><label>Personer som behövs<input name="requiredPeople" type="number" min="1" max="8" required value="${Number(item.required_people)||1}"></label><label>Vila efter slutförd (dagar)<input name="cooldownDays" type="number" min="1" max="90" required value="${Number(item.cooldown_days)||7}"></label><button class="primary-button" type="submit">Spara ändringar</button></form></div>`);
+        return;
+      }
+      const deleteDemoBank = event.target.closest('[data-demo-delete-bank]');
+      if (deleteDemoBank && demoState) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        if (!window.confirm('Ta bort sysslan från demolägets Sysselbank?')) return;
+        demoState.demoBankItems = (demoState.demoBankItems || []).filter((entry) => String(entry.id) !== deleteDemoBank.dataset.demoDeleteBank);
+        window.demoSandbox.workingState = demoState; window.renderGame?.(); return;
+      }
+      return;
+    }
     const editBankChore = event.target.closest('[data-edit-bank-chore]');
     if (editBankChore && data.member?.role === 'admin') {
       const item = data.choreBankItems.find((row) => row.id === editBankChore.dataset.editBankChore);
@@ -757,6 +859,22 @@
         clearNotifications.disabled = false;
         window.showToast?.('Aviseringarna kunde inte rensas. Kontrollera att den senaste SQL-migreringen är installerad.');
       }
+      return;
+    }
+    const editCurrentChore = event.target.closest('[data-edit-current-weekly-chore]');
+    if (editCurrentChore && data.familyId && data.member?.role === 'admin') {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const chore = data.weeklyChores.find((item) => item.id === editCurrentChore.dataset.editCurrentWeeklyChore);
+      if (!chore || !data.plan || data.plan.status !== 'open') return;
+      if ((chore.quest_submissions || []).length) { window.showToast?.('Uppgiften har skickats in och kan därför inte redigeras.'); return; }
+      const assignments = chore.chore_assignments || [];
+      const scheduledFor = assignments.find((item) => item.scheduled_for)?.scheduled_for || '';
+      const baseTitle = chore.title.replace(/\s·\s(?:måndag|tisdag|onsdag|torsdag|fredag|lördag|söndag)$/i, '').trim();
+      const selectedUsers = new Set(assignments.map((item) => item.user_id));
+      const memberFields = data.members.map((member) => `<label><input type="checkbox" name="assignees" value="${escHtml(member.user_id)}" ${selectedUsers.has(member.user_id) ? 'checked' : ''}> ${escHtml(member.display_name)}</label>`).join('');
+      const weekdays = ['Måndag','Tisdag','Onsdag','Torsdag','Fredag','Lördag','Söndag'];
+      const dayOptions = weekdays.map((day,index) => { const date = new Date(`${data.plan.week_start}T12:00:00Z`); date.setUTCDate(date.getUTCDate()+index); const value = new Intl.DateTimeFormat('sv-SE',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).format(date); return `<option value="${value}" ${value===scheduledFor?'selected':''}>${day} · ${new Intl.DateTimeFormat('sv-SE',{day:'numeric',month:'short',timeZone:'UTC'}).format(date)}</option>`; }).join('');
+      window.openModal?.(`<div class="planned-chore-edit"><button class="modal-close" data-close aria-label="Stäng">×</button><div class="eyebrow">DENNA VECKA</div><h2>Redigera veckouppgift</h2><p>Ändra uppgiftens namn, belöning, ansvariga eller dag.</p><form id="admin-edit-current-weekly-chore"><input type="hidden" name="choreId" value="${escHtml(chore.id)}"><label>Uppgiftens namn<input name="title" maxlength="85" required value="${escHtml(baseTitle)}"></label><label>Beskrivning<textarea name="description" maxlength="300" rows="3">${escHtml(chore.description||'')}</textarea></label><div class="planned-chore-rewards"><label>XP-belöning<input name="xp" type="number" min="0" max="500" required value="${chore.xp_reward}"></label><label>Myntbelöning<input name="tokens" type="number" min="0" max="100" required value="${chore.token_reward}"></label></div><label>Svårighetsgrad<select name="difficulty"><option ${chore.difficulty==='Lätt'?'selected':''}>Lätt</option><option ${chore.difficulty==='Mellan'?'selected':''}>Mellan</option><option ${chore.difficulty==='Svår'?'selected':''}>Svår</option></select></label><label>Planerad dag<select name="scheduledFor"><option value="" ${!scheduledFor?'selected':''}>Ingen särskild dag</option>${dayOptions}</select></label><fieldset class="planned-chore-assignees"><legend>Ansvariga personer</legend>${memberFields}</fieldset><p class="planned-chore-note">Om en viss dag väljs ska exakt en person vara ansvarig. Redigering låses när uppgiften skickats in.</p><button class="primary-button" type="submit">Spara ändringar</button></form></div>`);
       return;
     }
     const editWeeklyGroup = event.target.closest('[data-edit-weekly-group]');
@@ -1029,7 +1147,39 @@
       summary.textContent = `${rows.length} dagar · ${[...totals].map(([name,count]) => `${name} ${count}`).join(' · ')}`;
     }
   });
-    document.addEventListener('submit', async (event) => {
+  document.addEventListener('submit', async (event) => {
+    if (window.demoSandbox.active) {
+      const demoState = window.gameState;
+      const formElement = event.target;
+      const values = new FormData(formElement);
+      if (formElement.id === 'demo-admin-create-bank-item' && demoState) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const title = String(values.get('title') || '').trim();
+        if (!title) return;
+        demoState.demoBankItems = demoState.demoBankItems || [];
+        demoState.demoBankItems.unshift({ id: `demo-bank-${Date.now()}`, title, description: String(values.get('description')||'').trim(), difficulty: String(values.get('difficulty')||'Lätt'), xp_reward: Number(values.get('xp'))||0, token_reward: Number(values.get('tokens'))||0, required_people: Math.max(1, Number(values.get('requiredPeople'))||1), cooldown_days: Math.max(1, Number(values.get('cooldownDays'))||7), reserved_by: [], is_active: true });
+        window.demoSandbox.workingState = demoState; formElement.reset(); formElement.elements.xp.value = '15'; formElement.elements.tokens.value = '3'; formElement.elements.requiredPeople.value = '1'; formElement.elements.cooldownDays.value = '7'; window.renderGame?.(); window.showToast?.('Sysslan lades till i demolägets Sysselbank.'); return;
+      }
+      if (formElement.id === 'demo-edit-bank-item' && demoState) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const item = (demoState.demoBankItems||[]).find((entry) => String(entry.id) === String(values.get('id')));
+        if (!item) return;
+        Object.assign(item, { title: String(values.get('title')||'').trim(), description: String(values.get('description')||'').trim(), difficulty: String(values.get('difficulty')||'Lätt'), xp_reward: Number(values.get('xp'))||0, token_reward: Number(values.get('tokens'))||0, required_people: Math.max(1,Number(values.get('requiredPeople'))||1), cooldown_days: Math.max(1,Number(values.get('cooldownDays'))||7) });
+        document.getElementById('modal-root').innerHTML = ''; window.demoSandbox.workingState = demoState; window.renderGame?.(); window.showToast?.('Banksysslan uppdaterades i demoläget.'); return;
+      }
+      if (formElement.id === 'demo-edit-weekly' && demoState) {
+        event.preventDefault(); event.stopImmediatePropagation();
+        const chore = [...(demoState.demoWeeklyChores||[]), ...(demoState.customQuests||[])].find((entry) => String(entry.id) === String(values.get('id')));
+        if (!chore) return;
+        Object.assign(chore, { title: String(values.get('title')||'').trim(), detail: String(values.get('description')||'').trim(), xp: Number(values.get('xp'))||0, tokens: Number(values.get('tokens'))||0, difficulty: String(values.get('difficulty')||'Lätt') });
+        const localQuest = (demoState.customQuests||[]).find((entry) => String(entry.id) === String(values.get('id')));
+        if (localQuest && localQuest !== chore) Object.assign(localQuest, { title: chore.title, detail: chore.detail, xp: chore.xp, tokens: chore.tokens, difficulty: chore.difficulty });
+        document.getElementById('modal-root').innerHTML = ''; window.demoSandbox.workingState = demoState; window.renderGame?.(); window.showToast?.('Uppgiften uppdaterades i demoläget.'); return;
+      }
+      return;
+    }
+  }, true);
+  document.addEventListener('submit', async (event) => {
     if (window.demoSandbox.active) return;
     if (event.target.id === 'admin-edit-bank-chore' && data.familyId) {
       event.preventDefault(); event.stopImmediatePropagation();
@@ -1096,6 +1246,36 @@
       try { await call(client.rpc('admin_grant_self_tokens', { p_family_id: data.familyId, p_amount: amount })); await refresh(); window.showToast?.(`${amount} mynt lades till på ditt konto.`); }
       catch (error) { window.showToast?.(error.message); }
       finally { if (button) button.disabled = false; }
+      return;
+    }
+    if (event.target.id === 'admin-edit-current-weekly-chore' && data.familyId) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (data.member.role !== 'admin' || !data.plan || data.plan.status !== 'open') return;
+      const form = new FormData(event.target);
+      const selected = [...event.target.querySelectorAll('[name="assignees"]:checked')].map((input) => input.value);
+      const scheduledFor = String(form.get('scheduledFor') || '') || null;
+      if (!selected.length) { window.showToast?.('Välj minst en ansvarig person.'); return; }
+      if (scheduledFor && selected.length !== 1) { window.showToast?.('En uppgift med bestämd dag ska ha exakt en ansvarig.'); return; }
+      const button = event.submitter; if (button) button.disabled = true;
+      try {
+        await call(client.rpc('admin_update_current_weekly_chore', {
+          p_chore_id: String(form.get('choreId')),
+          p_title: String(form.get('title') || '').trim(),
+          p_description: String(form.get('description') || '').trim(),
+          p_xp: Number(form.get('xp')),
+          p_tokens: Number(form.get('tokens')),
+          p_difficulty: String(form.get('difficulty') || 'Lätt'),
+          p_assignees: selected,
+          p_scheduled_for: scheduledFor
+        }));
+        document.getElementById('modal-root').innerHTML = '';
+        await refresh(); window.showToast?.('Veckans uppgift har uppdaterats.');
+      } catch (error) {
+        const message = /admin_update_current_weekly_chore|schema cache|could not find the function/i.test(error.message || '')
+          ? 'Databasuppdateringen för redigering av veckans uppgifter saknas.'
+          : error.message;
+        window.showToast?.(message);
+      } finally { if (button) button.disabled = false; }
       return;
     }
     if (event.target.id === 'admin-edit-planned-group' && data.familyId) {

@@ -28,3 +28,6 @@ Serverstyrd kistöppning och beständig varelseförvaring är inkopplade. Själv
 Använd appen via produktionsadressen eller en lokal HTTP-förhandsvisning. Auth-flöden fungerar inte tillförlitligt via `file://`.
 
 Lägg aldrig en `service_role`- eller secret key i klientfilerna.
+
+
+Migrationen `20261123110000_edit_current_weekly_chores.sql` lägger till säker redigering av öppna sysslor under Denna vecka. Kör den i SQL Editor om den inte redan är installerad.
