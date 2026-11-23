@@ -561,3 +561,5 @@ body{font-size:var(--body-copy);line-height:1.5}
 @media(max-width:760px){.quest-path-step .quest-status:not(.rejected-status){display:none}}
 
 .admin-quest-form input[readonly]{background:var(--pale);color:var(--deep);font-weight:850;cursor:default}
+.bank-admin-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:9px}.bank-admin-row .admin-list-copy{min-width:0}.bank-admin-row .filter-tab{white-space:nowrap}.bank-admin-row .admin-list-copy small{overflow-wrap:anywhere}.chore-bank-copy small+small{line-height:1.4}.chore-bank-offer .primary-button:disabled{opacity:.68;cursor:default;white-space:normal}.bank-chore-form>label small,.bank-chore-edit form>label small{display:block;color:var(--muted);font-size:11px;font-weight:500;margin-top:4px}
+@media(max-width:760px){.bank-admin-row{grid-template-columns:minmax(0,1fr) auto;gap:8px}.bank-admin-row .admin-list-copy{grid-column:1/-1}.bank-admin-row .level-chip{justify-self:start}.bank-admin-row .filter-tab{min-height:38px}.chore-bank-offer>.primary-button{max-width:100%;white-space:normal;line-height:1.2}}

@@ -17,6 +17,7 @@ Om `schema.sql` redan har körts ska migrationsfilerna i `migrations/` köras i 
 - Aktuell veckoplan skapas för administratörer när den saknas.
 - Administratörer skapar sysslor och tilldelar dem till valda familjemedlemmar.
 - Spelare skickar in tilldelade sysslor; admins godkänner eller nekar från kön.
+- Sysselbanken låter admins redigera och ta bort återkommande uppgifter, ställa in vilodagar och ange hur många personer som behöver reservera innan en gemensam uppgift tilldelas.
 - Belöningar delas ut i databasfunktionen efter godkännande. Klienten skriver inte XP eller mynt.
 - Kistor debiterar mynt, drar varelser och skapar förbannelser i en enda servertransaktion. Dubbletter ger mynt enligt raritet.
 - Varelseinventarium och tidsbegränsade krafteffekter har familjeisolerade tabeller; klienten kan läsa sin samling men kan inte själv lägga till eller ändra varelser och effekter.
